@@ -12,8 +12,20 @@ inputs:
     description: "The password to unlock the certificate-data"
     required: true
   # Optional
+  apple-notary-password:
+    description: "The Apple Developer account password to use in notarization"
+    required: false
+  apple-notary-user:
+    description: "The Apple Developer account email to use in notarization"
+    required: false
+  apple-product-id:
+    description: "The unique product ID to use for notarization"
+    required: false
   apple-team-id:
-    description: "The architecture to build for x64|amd64|aarch64|arm64"
+    description: "The Apple Developer account Team ID"
+    required: false
+  options:
+    description: "Extra options to pass to the codesigning tool"
     required: false
 
 outputs:
@@ -60,3 +72,125 @@ runs:
         fi
         echo "::endgroup::"
 
+    - name: Sign
+      shell: bash
+      if: runner.os == 'Linux'
+      run: |
+        echo "::warning:: Currently not supported on Linux!"
+    - name: Sign
+      shell: bash
+      if: runner.os == 'macOS'
+      env:
+        FILE: ${{ inputs.file }}
+        OPTIONS: ${{ inputs.options }}
+        APPLE_CERT_DATA: ${{ inputs.certificate-data }}
+        APPLE_CERT_PASSWORD: ${{ inputs.certificate-password }}
+        APPLE_TEAM_ID: ${{ inputs.apple-team-id }}
+      run: |
+        # Setup
+        SIGNFILE="$(pwd)/$FILE"
+
+        # Throw error if file does not exist
+        if [ ! -f "$SIGNFILE" ]; then
+          echo "$SIGNFILE does not exist!"
+          exit 5
+        fi
+
+        # Export certs
+        echo "$APPLE_CERT_DATA" | base64 --decode > /tmp/certs.p12
+
+        # Create keychain
+        security create-keychain -p actions macos-build.keychain
+        security default-keychain -s macos-build.keychain
+        security unlock-keychain -p actions macos-build.keychain
+        security set-keychain-settings -t 3600 -u macos-build.keychain
+
+        # Import certs to keychain
+        security import /tmp/certs.p12 -k ~/Library/Keychains/macos-build.keychain -P "$APPLE_CERT_PASSWORD" -T /usr/bin/codesign -T /usr/bin/productsign
+
+        # Key signing
+        security set-key-partition-list -S apple-tool:,apple: -s -k actions macos-build.keychain
+
+        # Verify keychain things
+        security find-identity -v macos-build.keychain | grep "$APPLE_TEAM_ID" | grep "Developer ID Application"
+        security find-identity -v macos-build.keychain | grep "$APPLE_TEAM_ID" | grep "Developer ID Installer"
+
+        # Force the codesignature
+        codesign --force $OPTIONS -s "$APPLE_TEAM_ID" "$SIGNFILE"
+
+        # Verify the code signature
+        codesign -v "$SIGNFILE" --verbose
+    - name: Sign
+      shell: powershell
+      if: runner.os == 'Windows'
+      env:
+        FILE: ${{ inputs.file }}
+        OPTIONS: ${{ inputs.options }}
+        WINDOZE_CERT_DATA: ${{ inputs.certificate-data }}
+        WINDOZE_CERT_PASSWORD: ${{ inputs.certificate-password }}
+      run: |
+        $ErrorActionPreference = "Stop"
+
+        # Get some things for cert opts
+        $file = -join($pwd, "/", $env:FILE);
+        $temp_dir = $env:TMP
+        $cert_data = $env:WINDOZE_CERT_DATA
+        $cert_path = "$temp_dir\lando.windoze.p12"
+        $cert_password = $env:WINDOZE_CERT_PASSWORD
+        $cert_secure_password = $null
+        $signtool = "${env:ProgramFiles(x86)}\Windows Kits\10\bin\x64\signtool.exe"
+        $signtool2022 = "${env:ProgramFiles(x86)}\Windows Kits\10\bin\10.0.17763.0\x86\signtool.exe"
+
+        # Throw error if file does not exist
+        if (!(Test-Path "$file"))
+        {
+          throw "$file does not exist"
+        }
+
+        # Decode and dump to temp file
+        If (!(Test-Path $cert_path)) {
+          Write-Output "Dumping cert to $cert_path..."
+          $bytes = [Convert]::FromBase64String($cert_data)
+          [IO.File]::WriteAllBytes($cert_path, $bytes)
+        }
+
+        # Use more recent signtool if we can
+        If (Test-Path $signtool2022) {
+          $signtool = "$signtool2022"
+        }
+
+        # Verify the cert and password are good
+        Write-Output "Verifying cert is good to go..."
+        $cert_secure_password = ConvertTo-SecureString $cert_password -AsPlainText -Force
+        Import-PfxCertificate -FilePath "$cert_path" -Password $cert_secure_password -CertStoreLocation "Cert:\LocalMachine\My"
+
+        # If we get this far we should be good!
+        Write-Output "We can sign!"
+
+        # Sign and verify
+        Write-Output "Trying to sign $file with $signtool..."
+        & $signtool sign -f "$cert_path" -p "$cert_password" -fd sha256 -tr "http://timestamp.comodoca.com/?td=sha256" -td sha256 $env:OPTIONS -as -v "$file"
+        Write-Output "Verifying $file has been signed with the signtool..."
+        & $signtool verify -pa -v "$file"
+
+    - name: Notarize
+      if: runner.os == 'macOS' && inputs.apple-notary-user && inputs.apple-notary-password && inputs.apple-product-id
+      uses: devbotsxyz/xcode-notarize@v1
+      with:
+        appstore-connect-username: ${{ inputs.apple-notary-user }}
+        appstore-connect-password: ${{ inputs.apple-notary-password }}
+        primary-bundle-id: ${{ inputs.apple-product-id }}
+        product-path: ${{ inputs.file }}
+        verbose: true
+    - name: Verify Notarization
+      if: runner.os == 'macOS' && inputs.apple-notary-user && inputs.apple-notary-password && inputs.apple-product-id
+      shell: bash
+      run: codesign -vvvv -R="notarized" --check-notarization ${{ inputs.file }}
+
+    - name: Set outputs
+      shell: bash
+      id: code-sign-action
+      run: |
+        echo "::group::Setting outputs"
+        echo "::set-output name=file::$(pwd)/${{ inputs.file }}"
+        echo "::endgroup::"
