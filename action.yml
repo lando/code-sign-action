@@ -1,5 +1,7 @@
 name: "Code Sign Action"
 description: "A GitHub Action for code signing files. Particularly those generated with vercel/pkg."
+color: purple
+icon: lock
 inputs:
   # Required
   file:
