@@ -134,16 +134,16 @@ runs:
           throw "$file does not exist"
         }
 
-        # Use more recent signtool if we can
-        If (!(Test-Path $signtool2022)) {
-          $signtool = "$signtool2022"
-        }
-
         # Decode and dump to temp file
         If (!(Test-Path $cert_path)) {
           Write-Output "Dumping cert to $cert_path..."
           $bytes = [Convert]::FromBase64String($cert_data)
           [IO.File]::WriteAllBytes($cert_path, $bytes)
+        }
+
+        # Use more recent signtool if we can
+        If (Test-Path $signtool2022) {
+          $signtool = "$signtool2022"
         }
 
         # Verify the cert and password are good
