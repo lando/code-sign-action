@@ -68,7 +68,6 @@ runs:
       if: runner.os == 'Linux'
       run: |
         echo "::warning:: Currently not supported on Linux!"
-
     - name: Sign
       shell: bash
       if: runner.os == 'macOS'
@@ -112,7 +111,6 @@ runs:
 
         # Verify the code signature
         codesign -v "$SIGNFILE" --verbose
-
     - name: Sign
       shell: powershell
       if: runner.os == 'Windows'
@@ -165,6 +163,26 @@ runs:
         & $signtool sign -f "$cert_path" -p "$cert_password" -fd sha256 -tr "http://timestamp.comodoca.com/?td=sha256" -td sha256 $env:OPTIONS -as -v "$file"
         Write-Output "Verifying $file has been signed with the signtool..."
         & $signtool verify -pa -v "$file"
+
+    - name: Notarize
+      if: runner.os == 'macOS' && inputs.apple-notary-user && inputs.apple-notary-password && inputs.apple-product-id
+      uses: devbotsxyz/xcode-notarize@v1
+      with:
+        appstore-connect-username: ${{ inputs.apple-notary-user }}
+        appstore-connect-password: ${{ inputs.apple-notary-password }}
+        primary-bundle-id: ${{ inputs.apple-product-id }}
+        product-path: ${{ inputs.file }}
+        verbose: true
+    - name: Staple
+      if: runner.os == 'macOS' && inputs.apple-notary-user && inputs.apple-notary-password && inputs.apple-product-id
+      uses: devbotsxyz/xcode-staple@v1
+      with:
+        product-path: ${{ inputs.file }}
+        verbose: true
+    - name: Verify Notarization
+      if: runner.os == 'macOS' && inputs.apple-notary-user && inputs.apple-notary-password && inputs.apple-product-id
+      shell: bash
+      run: codesign -vvvv -R="notarized" --check-notarization ${{ inputs.file }}
 
     - name: Set outputs
       shell: bash
