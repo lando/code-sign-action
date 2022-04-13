@@ -12,6 +12,15 @@ inputs:
     description: "The password to unlock the certificate-data"
     required: true
   # Optional
+  apple-notary-password:
+    description: "The architecture to build for x64|amd64|aarch64|arm64"
+    required: false
+  apple-notary-user:
+    description: "The architecture to build for x64|amd64|aarch64|arm64"
+    required: false
+  apple-product-id:
+    description: "The architecture to build for x64|amd64|aarch64|arm64"
+    required: false
   apple-team-id:
     description: "The architecture to build for x64|amd64|aarch64|arm64"
     required: false
@@ -173,12 +182,12 @@ runs:
         primary-bundle-id: ${{ inputs.apple-product-id }}
         product-path: ${{ inputs.file }}
         verbose: true
-    - name: Staple
-      if: runner.os == 'macOS' && inputs.apple-notary-user && inputs.apple-notary-password && inputs.apple-product-id
-      uses: devbotsxyz/xcode-staple@v1
-      with:
-        product-path: ${{ inputs.file }}
-        verbose: true
+    # - name: Staple
+    #   if: runner.os == 'macOS' && inputs.apple-notary-user && inputs.apple-notary-password && inputs.apple-product-id
+    #   uses: devbotsxyz/xcode-staple@v1
+    #   with:
+    #     product-path: ${{ inputs.file }}
+    #     verbose: true
     - name: Verify Notarization
       if: runner.os == 'macOS' && inputs.apple-notary-user && inputs.apple-notary-password && inputs.apple-product-id
       shell: bash
