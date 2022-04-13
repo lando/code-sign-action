@@ -73,29 +73,37 @@ runs:
         APPLE_CERT_PASSWORD: ${{ inputs.certificate-password }}
         APPLE_TEAM_ID: ${{ inputs.apple-team-id }}
       run: |
-        # Export certs
-        echo "$APPLE_CERT_DATA" | base64 --decode > /tmp/certs.p12
-        # Create keychain
-        security create-keychain -p actions macos-build.keychain
-        security default-keychain -s macos-build.keychain
-        security unlock-keychain -p actions macos-build.keychain
-        security set-keychain-settings -t 3600 -u macos-build.keychain
-        # Import certs to keychain
-        security import /tmp/certs.p12 -k ~/Library/Keychains/macos-build.keychain -P "$APPLE_CERT_PASSWORD" -T /usr/bin/codesign -T /usr/bin/productsign
-        # Key signing
-        security set-key-partition-list -S apple-tool:,apple: -s -k actions macos-build.keychain
-        # Verify keychain things
-        security find-identity -v macos-build.keychain | grep "$APPLE_TEAM_ID" | grep "Developer ID Application"
-        security find-identity -v macos-build.keychain | grep "$APPLE_TEAM_ID" | grep "Developer ID Installer"
-
+        # Setup
         SIGNFILE="$(pwd)/$FILE"
+
         # Throw error if file does not exist
         if [ ! -f "$SIGNFILE" ]; then
           echo "$SIGNFILE does not exist!"
           exit 5
         fi
+
+        # Export certs
+        echo "$APPLE_CERT_DATA" | base64 --decode > /tmp/certs.p12
+
+        # Create keychain
+        security create-keychain -p actions macos-build.keychain
+        security default-keychain -s macos-build.keychain
+        security unlock-keychain -p actions macos-build.keychain
+        security set-keychain-settings -t 3600 -u macos-build.keychain
+
+        # Import certs to keychain
+        security import /tmp/certs.p12 -k ~/Library/Keychains/macos-build.keychain -P "$APPLE_CERT_PASSWORD" -T /usr/bin/codesign -T /usr/bin/productsign
+
+        # Key signing
+        security set-key-partition-list -S apple-tool:,apple: -s -k actions macos-build.keychain
+
+        # Verify keychain things
+        security find-identity -v macos-build.keychain | grep "$APPLE_TEAM_ID" | grep "Developer ID Application"
+        security find-identity -v macos-build.keychain | grep "$APPLE_TEAM_ID" | grep "Developer ID Installer"
+
         # Force the codesignature
         codesign --force $OPTIONS -s "$APPLE_TEAM_ID" "$SIGNFILE"
+
         # Verify the code signature
         codesign -v "$SIGNFILE" --verbose
 
@@ -109,37 +117,43 @@ runs:
         WINDOZE_CERT_PASSWORD: ${{ inputs.certificate-password }}
       run: |
         $ErrorActionPreference = "Stop"
+
         # Get some things for cert opts
+        $file = -join($pwd, "/", $env:FILE);
         $temp_dir = $env:TMP
         $cert_data = $env:WINDOZE_CERT_DATA
         $cert_path = "$temp_dir\lando.windoze.p12"
         $cert_password = $env:WINDOZE_CERT_PASSWORD
         $cert_secure_password = $null
         $signtool = "${env:ProgramFiles(x86)}\Windows Kits\10\bin\x64\signtool.exe"
+        $signtool2022 = "${env:ProgramFiles(x86)}\Windows Kits\10\bin\10.0.19041.0\x64\signtool.exe"
+
+        # Throw error if file does not exist
+        if (!(Test-Path "$file"))
+        {
+          throw "$file does not exist"
+        }
 
         # Use more recent signtool if we can
+        If (!(Test-Path $signtool2022)) {
+          $signtool = "$signtool2022"
+        }
 
-        # Export certs
-        Write-Output "Cert detected!"
         # Decode and dump to temp file
         If (!(Test-Path $cert_path)) {
           Write-Output "Dumping cert to $cert_path..."
           $bytes = [Convert]::FromBase64String($cert_data)
           [IO.File]::WriteAllBytes($cert_path, $bytes)
         }
+
         # Verify the cert and password are good
         Write-Output "Verifying cert is good to go..."
         $cert_secure_password = ConvertTo-SecureString $cert_password -AsPlainText -Force
         Import-PfxCertificate -FilePath "$cert_path" -Password $cert_secure_password -CertStoreLocation "Cert:\LocalMachine\My"
+
         # If we get this far we should be good!
         Write-Output "We can sign!"
-        # Get our file
-        $file = -join($pwd, "/", $env:FILE);
-        # Throw error if file does not exist
-        if (!(Test-Path "$file"))
-        {
-          throw "$file does not exist"
-        }
+
         # Sign and verify
         Write-Output "Trying to sign $file with $signtool..."
         & $signtool sign -f "$cert_path" -p "$cert_password" -fd sha256 -tr "http://timestamp.comodoca.com/?td=sha256" -td sha256 $env:OPTIONS -as -v "$file"
