@@ -54,7 +54,6 @@ jobs:
           chmod +x "$FILE"
           "$FILE"
 
-jobs:
   options-tests:
     runs-on: macos-11
     env:
@@ -82,5 +81,5 @@ jobs:
           certificate-data: ${{ secrets.APPLE_CERT_DATA }}
           certificate-password: ${{ secrets.APPLE_CERT_PASSWORD }}
           apple-team-id: FY8GAUX282
-          options: --force --options runtime --entitlements entitlements.xml
+          options: --options runtime --entitlements entitlements.xml
 
