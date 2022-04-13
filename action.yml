@@ -115,6 +115,9 @@ runs:
         $cert_path = "$temp_dir\lando.windoze.p12"
         $cert_password = $env:WINDOZE_CERT_PASSWORD
         $cert_secure_password = $null
+        $signtool = "${env:ProgramFiles(x86)}\Windows Kits\10\bin\x64\signtool.exe"
+
+        # Use more recent signtool if we can
 
         # Export certs
         Write-Output "Cert detected!"
@@ -138,10 +141,8 @@ runs:
           throw "$file does not exist"
         }
         # Sign and verify
-        Write-Output "Trying to sign $file with signtool.exe..."
-        signtool.exe sign -f "$cert_path" -p "$cert_password" -fd sha256 -tr "http://timestamp.comodoca.com/?td=sha256" -td sha256 $env:OPTIONS -as -v "$file"
-        Write-Output "Verifying $file has been signed with the signtool.exe..."
-        signtool.exe verify -pa -v "$file"
-        Get-Command signtool.exe
-
+        Write-Output "Trying to sign $file with $signtool..."
+        & $signtool sign -f "$cert_path" -p "$cert_password" -fd sha256 -tr "http://timestamp.comodoca.com/?td=sha256" -td sha256 $env:OPTIONS -as -v "$file"
+        Write-Output "Verifying $file has been signed with the signtool..."
+        & $signtool verify -pa -v "$file"
 

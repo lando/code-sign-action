@@ -18,7 +18,7 @@ jobs:
             apple-team-id: FY8GAUX282
           - os: ubuntu-20.04
             file: dist/@lando/code-sign-action
-          - os: windows-2022
+          - os: windows-2019
             file: dist/@lando/code-sign-action.exe
             certificate-data: WINDOZE_CERT_DATA
             certificate-password: WINDOZE_CERT_PASSWORD
