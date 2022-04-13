@@ -7,21 +7,21 @@ jobs:
   test:
     runs-on: ${{ matrix.os }}
     env:
-      TERM: xterm
+      APPLE_CERT_DATA: xterm
     strategy:
       matrix:
         include:
           - os: macos-11
             file: dist/@lando/code-sign-action
-            certificate-data: ${{ secrets.APPLE_CERT_DATA }}
-            certificate-password: ${{ secrets.APPLE_CERT_PASSWORD }}
+            certificate-data: APPLE_CERT_DATA
+            certificate-password: APPLE_CERT_PASSWORD
             apple-team-id: FY8GAUX282
           - os: ubuntu-20.04
             file: dist/@lando/code-sign-action
           - os: windows-2022
             file: dist/@lando/code-sign-action.exe
-            certificate-data: ${{ secrets.WINDOZE_CERT_DATA }}
-            certificate-password: ${{ secrets.WINDOZE_CERT_PASSWORD }}
+            certificate-data: WINDOZE_CERT_DATA
+            certificate-password: WINDOZE_CERT_PASSWORD
 
 
     steps:
@@ -46,6 +46,6 @@ jobs:
         uses: ./
         with:
           file: ${{ matrix.file }}
-          certificate-data: ${{ matrix.certificate-data }}
-          certificate-password: ${{ matrix.certificate-password }}
+          certificate-data: ${{ secrets[matrix.certificate-data] }}
+          certificate-password: ${{ secrets[matrix.certificate-password] }}
           apple-team-id: ${{ matrix.apple-team-id }}
