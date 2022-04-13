@@ -77,7 +77,7 @@ jobs:
       - name: Codesign
         uses: ./
         with:
-          file: ${{ matrix.file }}
+          file: "dist/@lando/code-sign-action"
           certificate-data: ${{ secrets.APPLE_CERT_DATA }}
           certificate-password: ${{ secrets.APPLE_CERT_PASSWORD }}
           apple-team-id: FY8GAUX282
