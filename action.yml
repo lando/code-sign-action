@@ -65,6 +65,12 @@ runs:
 
     - name: Sign
       shell: bash
+      if: runner.os == 'Linux'
+      run: |
+        echo "::warning:: Currently not supported on Linux!"
+
+    - name: Sign
+      shell: bash
       if: runner.os == 'macOS'
       env:
         FILE: ${{ inputs.file }}

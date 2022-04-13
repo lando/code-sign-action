@@ -53,3 +53,34 @@ jobs:
         run: |
           chmod +x "$FILE"
           "$FILE"
+
+jobs:
+  options-tests:
+    runs-on: macos-11
+    env:
+      term: xterm
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - name: Install node ${{ matrix.node-version }}
+        uses: actions/setup-node@v2
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: yarn
+      - name: Install Yarn dependencies
+        shell: bash
+        run: yarn install --prefer-offline --frozen-lockfile
+      - name: Package node binary
+        shell: bash
+        run: yarn build
+      - name: Codesign
+        uses: ./
+        with:
+          file: ${{ matrix.file }}
+          certificate-data: ${{ secrets.APPLE_CERT_DATA }}
+          certificate-password: ${{ secrets.APPLE_CERT_PASSWORD }}
+          apple-team-id: FY8GAUX282
+          options: --force --options runtime --entitlements entitlements.xml
+
