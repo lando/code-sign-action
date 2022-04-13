@@ -160,3 +160,10 @@ runs:
         Write-Output "Verifying $file has been signed with the signtool..."
         & $signtool verify -pa -v "$file"
 
+    - name: Set outputs
+      shell: bash
+      id: code-sign-action
+      run: |
+        echo "::group::Setting outputs"
+        echo "::set-output name=file::$(pwd)/${{ inputs.file }}"
+        echo "::endgroup::"

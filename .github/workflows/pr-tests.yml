@@ -4,7 +4,7 @@ on:
   pull_request:
 
 jobs:
-  test:
+  basic-tests:
     runs-on: ${{ matrix.os }}
     env:
       term: xterm
@@ -37,13 +37,19 @@ jobs:
         run: yarn install --prefer-offline --frozen-lockfile
       - name: Package node binary
         shell: bash
-        run: |
-          yarn build
-          ls -lsa dist/@lando
+        run: yarn build
       - name: Codesign
         uses: ./
+        id: code-sign-action
         with:
           file: ${{ matrix.file }}
           certificate-data: ${{ secrets[matrix.certificate-data] }}
           certificate-password: ${{ secrets[matrix.certificate-password] }}
           apple-team-id: ${{ matrix.apple-team-id }}
+      - name: Test outputs
+        shell: bash
+        env:
+          FILE: ${{ steps.code-sign-action.outputs.file }}
+        run: |
+          chmod +x "$FILE"
+          "$FILE"
