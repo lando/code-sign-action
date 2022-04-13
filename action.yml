@@ -13,16 +13,16 @@ inputs:
     required: true
   # Optional
   apple-notary-password:
-    description: "The architecture to build for x64|amd64|aarch64|arm64"
+    description: "The Apple Developer account password to use in notarization"
     required: false
   apple-notary-user:
-    description: "The architecture to build for x64|amd64|aarch64|arm64"
+    description: "The Apple Developer account email to use in notarization"
     required: false
   apple-product-id:
-    description: "The architecture to build for x64|amd64|aarch64|arm64"
+    description: "The unique product ID to use for notarization"
     required: false
   apple-team-id:
-    description: "The architecture to build for x64|amd64|aarch64|arm64"
+    description: "The Apple Developer account Team ID"
     required: false
   options:
     description: "Extra options to pass to the codesigning tool"
@@ -182,12 +182,6 @@ runs:
         primary-bundle-id: ${{ inputs.apple-product-id }}
         product-path: ${{ inputs.file }}
         verbose: true
-    # - name: Staple
-    #   if: runner.os == 'macOS' && inputs.apple-notary-user && inputs.apple-notary-password && inputs.apple-product-id
-    #   uses: devbotsxyz/xcode-staple@v1
-    #   with:
-    #     product-path: ${{ inputs.file }}
-    #     verbose: true
     - name: Verify Notarization
       if: runner.os == 'macOS' && inputs.apple-notary-user && inputs.apple-notary-password && inputs.apple-product-id
       shell: bash
