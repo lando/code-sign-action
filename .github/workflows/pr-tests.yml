@@ -7,7 +7,7 @@ jobs:
   test:
     runs-on: ${{ matrix.os }}
     env:
-      APPLE_CERT_DATA: xterm
+      term: xterm
     strategy:
       matrix:
         include:
@@ -22,8 +22,6 @@ jobs:
             file: dist/@lando/code-sign-action.exe
             certificate-data: WINDOZE_CERT_DATA
             certificate-password: WINDOZE_CERT_PASSWORD
-
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
