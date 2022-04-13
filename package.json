@@ -1,7 +1,7 @@
 {
   "name": "@lando/code-sign-action",
   "description": "A GitHub Action for code signing files",
-  "version": "2.0.0-beta.1",
+  "version": "2.0.0",
   "author": "Mike Pirog @pirog",
   "contributors": [
     {
