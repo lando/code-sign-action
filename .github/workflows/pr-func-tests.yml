@@ -1,0 +1,60 @@
+name: Func Tests
+
+on:
+  pull_request:
+
+jobs:
+  basic-func-test:
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Checkout action code
+        uses: actions/checkout@v2
+      - name: Run Pkg Action
+        uses: ./
+        id: basic-func-test
+        with:
+          entrypoint: bin/test
+
+  basic-cross-platform-test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os:
+          - macos-11
+          - ubuntu-20.04
+          - windows-2022
+    steps:
+      - name: Checkout action code
+        uses: actions/checkout@v2
+      - name: Run Pkg Action
+        uses: ./
+        id: basic-func-test
+        with:
+          entrypoint: bin/test
+          upload: false
+
+  basic-cross-everything-test:
+    runs-on: ubuntu-20.04
+    strategy:
+      matrix:
+        arch:
+          - x64
+          - arm64
+        node-version:
+          - node16
+        os:
+          - linux
+          - macos
+          - win
+    steps:
+      - name: Checkout action code
+        uses: actions/checkout@v2
+      - name: Run Pkg Action
+        uses: ./
+        id: basic-func-test
+        with:
+          arch: ${{ matrix.arch }}
+          entrypoint: bin/test
+          node-version: ${{ matrix.node-version }}
+          os: ${{ matrix.os }}
+          upload: false

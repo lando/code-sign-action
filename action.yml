@@ -1,0 +1,62 @@
+name: "Code Sign Action"
+description: "A GitHub Action for code signing files. Particularly those generated with vercel/pkg."
+inputs:
+  # Required
+  file:
+    description: "The file to sign"
+    required: true
+  certificate-data:
+    description: "A base64 encoded string of your p12 or pfx cert contents"
+    required: true
+  certificate-password:
+    description: "The password to unlock the certificate-data"
+    required: true
+  # Optional
+  apple-team-id:
+    description: "The architecture to build for x64|amd64|aarch64|arm64"
+    required: false
+
+outputs:
+  file:
+    description: "The path to the signed binary."
+    value: ${{ steps.code-sign-action.outputs.file }}
+
+runs:
+  using: composite
+  steps:
+    - name: Validate required inputs
+      shell: bash
+      if: runner.os != 'Linux'
+      run: |
+        echo "::group::Ensure file is set"
+        if [ "${{ inputs.file }}" == "" ]; then
+          echo "::error title=File is not set!::You must specify a file to sign!"
+          exit 1
+        fi
+        echo "::endgroup::"
+
+        echo "::group::Ensure cert data is set"
+        if [ "${{ inputs.certificate-data }}" == "" ]; then
+          echo "::error title=Cert data is not set!::You must specify the cert you want to sign with!"
+          exit 2
+        fi
+        echo "::endgroup::"
+
+        echo "::group::Ensure certificate password is set"
+        if [ "${{ inputs.certificate-password }}" == "" ]; then
+          echo "::error title=Cert password is not set!::You must specify the password to unlock the cert with!"
+          exit 2
+        fi
+        echo "::endgroup::"
+
+    - name: Validate macos specific inputs
+      shell: bash
+      if: runner.os == 'macOS'
+      run: |
+        echo "::group::Ensure Apple Team ID is set"
+        if [ "${{ inputs.apple-team-id }}" == "" ]; then
+          echo "::error title=File is not set!::You must specify a file to sign!"
+          exit 1
+        fi
+        echo "::endgroup::"
+

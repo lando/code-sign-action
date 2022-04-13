@@ -1,0 +1,213 @@
+name: Test Inputs
+
+on:
+  pull_request:
+
+jobs:
+  test-default-inputs:
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Checkout action code
+        uses: actions/checkout@v2
+      - name: Run Pkg Action
+        uses: ./
+        id: default-input-tests
+        with:
+          entrypoint: bin/test
+
+      - name: "TEST: should set the correct file output"
+        if: always()
+        run: |
+          if [ "${{ steps.default-input-tests.outputs.file }}" == "dist/@lando/pkg-action" ]; then
+            echo "::notice title=TEST PASSED::Ouput binary filename set from defaults correctly"
+          else
+            echo "::error title=TEST FAILED!::Ouput binary filename not set correctly"
+            exit 1
+          fi
+        shell: bash
+
+      - name: "TEST: should set the correct artifact-key"
+        if: always()
+        run: |
+          if [ "${{ steps.default-input-tests.outputs.artifact-key }}" == "pkg-action-node14-linux-x64-${{ github.sha }}" ]; then
+            echo "::notice title=TEST PASSED::Output artifact key set from defaults correctly"
+          else
+            echo "::error title=TEST FAILED!::Output artifact key not set correctly"
+            exit 2
+          fi
+        shell: bash
+
+  test-arch-inputs:
+    runs-on: ubuntu-20.04
+    strategy:
+      matrix:
+        arch:
+          - amd64
+          - x64
+          - aarch64
+          - arm64
+    steps:
+      - name: Checkout action code
+        uses: actions/checkout@v2
+      - name: Run Pkg Action
+        uses: ./
+        id: arch-input-tests
+        with:
+          entrypoint: bin/test
+          test: true
+          arch: ${{ matrix.arch }}
+
+      - name: "TEST: should map ${{ matrix.arch }} to x64 or arm64 as needed"
+        if: always()
+        run: |
+          if [ "${{ matrix.arch }}" == "x64" ]; then
+            if [ "${{ steps.arch-input-tests.outputs.artifact-key }}" == "pkg-action-node14-linux-x64-${{ github.sha }}" ]; then
+              echo "::notice title=TEST PASSED::Arch mapping from ${{ matrix.arch }} to x64 correctly"
+            else
+              echo "::error title=TEST FAILED!::Arch not mapping from ${{ matrix.arch }} to x64 correctly"
+              exit 1
+            fi
+          elif [ "${{ matrix.arch }}" == "amd64" ]; then
+            if [ "${{ steps.arch-input-tests.outputs.artifact-key }}" == "pkg-action-node14-linux-x64-${{ github.sha }}" ]; then
+              echo "::notice title=TEST PASSED::Arch mapping from ${{ matrix.arch }} to x64 correctly"
+            else
+              echo "::error title=TEST FAILED!::Arch not mapping from ${{ matrix.arch }} to x64 correctly"
+              exit 2
+            fi
+          elif [ "${{ matrix.arch }}" == "arm64" ]; then
+            if [ "${{ steps.arch-input-tests.outputs.artifact-key }}" == "pkg-action-node14-linux-arm64-${{ github.sha }}" ]; then
+              echo "::notice title=TEST PASSED::Arch mapping from ${{ matrix.arch }} to arm64 correctly"
+            else
+              echo "::error title=TEST FAILED!::Arch not mapping from ${{ matrix.arch }} to arm64 correctly"
+              exit 3
+            fi
+          elif [ "${{ matrix.arch }}" == "aarch64" ]; then
+            if [ "${{ steps.arch-input-tests.outputs.artifact-key }}" == "pkg-action-node14-linux-arm64-${{ github.sha }}" ]; then
+              echo "::notice title=TEST PASSED::Arch mapping from ${{ matrix.arch }} to arm64 correctly"
+            else
+              echo "::error title=TEST FAILED!::Arch not mapping from ${{ matrix.arch }} to arm64 correctly"
+              exit 4
+            fi
+          fi
+        shell: bash
+
+
+  test-runner-os:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os:
+          - macos-11
+          - ubuntu-20.04
+          - windows-2022
+
+    steps:
+      - name: Checkout action code
+        uses: actions/checkout@v2
+      - name: Run Pkg Action
+        uses: ./
+        id: runner-os-tests
+        with:
+          entrypoint: bin/test
+          test: true
+
+      - name: "TEST: should map runner os correctly"
+        if: always()
+        run: |
+          if [ "${{ runner.os }}" == "Linux" ]; then
+            if [ "${{ steps.runner-os-tests.outputs.artifact-key }}" == "pkg-action-node14-linux-x64-${{ github.sha }}" ]; then
+              echo "::notice title=TEST PASSED::Runner OS mapping to linux correctly"
+            else
+              echo "::error title=TEST FAILED!::Runner OS mapping not mapping to linux correctly"
+              exit 1
+            fi
+          elif [ "${{ runner.os }}" == "macOS" ]; then
+            if [ "${{ steps.runner-os-tests.outputs.artifact-key }}" == "pkg-action-node14-macos-x64-${{ github.sha }}" ]; then
+              echo "::notice title=TEST PASSED::Runner OS mapping to macos correctly"
+            else
+              echo "::error title=TEST FAILED!::Runner OS mapping not mapping to macos correctly"
+              exit 2
+            fi
+          elif [ "${{ runner.os }}" == "Windows" ]; then
+            if [ "${{ steps.runner-os-tests.outputs.artifact-key }}" == "pkg-action-node14-win-x64-${{ github.sha }}" ]; then
+              echo "::notice title=TEST PASSED::Runner OS mapping to win correctly"
+            else
+              echo "::error title=TEST FAILED!::Runner OS mapping not mapping to win correctly"
+              exit 3
+            fi
+          fi
+        shell: bash
+
+  test-os-input:
+    runs-on: ubuntu-20.04
+    strategy:
+      matrix:
+        os:
+          - macos
+          - linux
+          - win
+
+    steps:
+      - name: Checkout action code
+        uses: actions/checkout@v2
+      - name: Run Pkg Action
+        uses: ./
+        id: os-input-tests
+        with:
+          entrypoint: bin/test
+          test: true
+          os: ${{ matrix.os }}
+
+      - name: "TEST: should use correct os"
+        if: always()
+        run: |
+          if [ "${{ matrix.os }}" == "linux" ]; then
+            if [ "${{ steps.os-input-tests.outputs.artifact-key }}" == "pkg-action-node14-linux-x64-${{ github.sha }}" ]; then
+              echo "::notice title=TEST PASSED::OS input ${{ matrix.os }} being used correctly"
+            else
+              echo "::error title=TEST FAILED!::OS input not being using ${{ matrix.os }} correctly"
+              exit 1
+            fi
+          elif [ "${{ matrix.os }}" == "macos" ]; then
+            if [ "${{ steps.os-input-tests.outputs.artifact-key }}" == "pkg-action-node14-macos-x64-${{ github.sha }}" ]; then
+              echo "::notice title=TEST PASSED::OS input ${{ matrix.os }} being used correctly"
+            else
+              echo "::error title=TEST FAILED!::OS input not being using ${{ matrix.os }} correctly"
+              exit 2
+            fi
+          elif [ "${{ matrix.os }}" == "win" ]; then
+            if [ "${{ steps.os-input-tests.outputs.artifact-key }}" == "pkg-action-node14-win-x64-${{ github.sha }}" ]; then
+              echo "::notice title=TEST PASSED::OS input ${{ matrix.os }} being used correctly"
+            else
+              echo "::error title=TEST FAILED!::OS input not being using ${{ matrix.os }} correctly"
+              exit 3
+            fi
+          fi
+        shell: bash
+
+      - name: "TEST: should use correct file suffix"
+        if: always()
+        run: |
+          if [ "${{ matrix.os }}" == "linux" ]; then
+            if [ "${{ steps.os-input-tests.outputs.file }}" == "dist/@lando/pkg-action" ]; then
+              echo "::notice title=TEST PASSED::Correct ${{ matrix.os }} file suffix being used correctly"
+            else
+              echo "::error title=TEST FAILED!::File suffix for ${{ matrix.os }} not being set correctly"
+              exit 1
+            fi
+          elif [ "${{ matrix.os }}" == "macos" ]; then
+            if [ "${{ steps.os-input-tests.outputs.file }}" == "dist/@lando/pkg-action" ]; then
+              echo "::notice title=TEST PASSED::Correct ${{ matrix.os }} file suffix being used correctly"
+            else
+              echo "::error title=TEST FAILED!::File suffix for ${{ matrix.os }} not being set correctly"
+              exit 2
+            fi
+          elif [ "${{ matrix.os }}" == "win" ]; then
+            if [ "${{ steps.os-input-tests.outputs.file }}" == "dist/@lando/pkg-action.exe" ]; then
+              echo "::notice title=TEST PASSED::Correct ${{ matrix.os }} file suffix being used correctly"
+            else
+              echo "::error title=TEST FAILED!::File suffix for ${{ matrix.os }} not being set correctly"
+              exit 3
+            fi
+          fi
+        shell: bash
