@@ -10,10 +10,20 @@ jobs:
       TERM: xterm
     strategy:
       matrix:
-        os:
-          - macos-11
-          - ubuntu-20.04
-          - windows-2022
+        include:
+          - os: macos-11
+            file: dist/@lando/code-sign-action
+            certificate-data: ${{ secrets.APPLE_CERT_DATA }}
+            certificate-password: ${{ secrets.APPLE_CERT_PASSWORD }}
+            apple-team-id: FY8GAUX282
+          - os: ubuntu-20.04
+            file: dist/@lando/code-sign-action
+          - os: windows-2022
+            file: dist/@lando/code-sign-action.exe
+            certificate-data: ${{ secrets.WINDOZE_CERT_DATA }}
+            certificate-password: ${{ secrets.WINDOZE_CERT_PASSWORD }}
+
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
@@ -27,13 +37,15 @@ jobs:
       - name: Install Yarn dependencies
         shell: bash
         run: yarn install --prefer-offline --frozen-lockfile
-      - name: Install Yarn dependencies
+      - name: Package node binary
         shell: bash
         run: |
           yarn build
           ls -lsa dist/@lando
-
-      # - name: Codesign
-      #   uses: ./
-      #   with:
-      #     entrypoint: bin/test
+      - name: Codesign
+        uses: ./
+        with:
+          file: ${{ matrix.file }}
+          certificate-data: ${{ matrix.certificate-data }}
+          certificate-password: ${{ matrix.certificate-password }}
+          apple-team-id: ${{ matrix.apple-team-id }}
