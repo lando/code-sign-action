@@ -60,7 +60,7 @@ runs:
         fi
         echo "::endgroup::"
 
-    - name: Import macOS certs
+    - name: Import certs
       shell: bash
       if: runner.os == 'macOS'
       env:
@@ -82,3 +82,31 @@ runs:
         # Verify the things
         security find-identity -v macos-build.keychain | grep "$APPLE_TEAM_ID" | grep "Developer ID Application"
         security find-identity -v macos-build.keychain | grep "$APPLE_TEAM_ID" | grep "Developer ID Installer"
+    - name: Import certs
+      shell: powershell
+      if: runner.os == 'Windows'
+      env:
+        WINDOZE_CERT_DATA: ${{ inputs.certificate-data }}
+        WINDOZE_CERT_PASSWORD: ${{ inputs.certificate-password }}
+      run: |
+        $ErrorActionPreference = "Stop"
+        # Get some things for cert opts
+        $temp_dir = $env:TMP
+        $cert_data = $env:WINDOZE_CERT_DATA
+        $cert_path = "$temp_dir\lando.windoze.p12"
+        $cert_password = $env:WINDOZE_CERT_PASSWORD
+        $cert_secure_password = $null
+        # Export certs
+        Write-Output "Cert detected!"
+        # Decode and dump to temp file
+        If (!(Test-Path $cert_path)) {
+          Write-Output "Dumping cert to $cert_path..."
+          $bytes = [Convert]::FromBase64String($cert_data)
+          [IO.File]::WriteAllBytes($cert_path, $bytes)
+        }
+        # Verify the cert and password are good
+        Write-Output "Verifying cert is good to go..."
+        $cert_secure_password = ConvertTo-SecureString $cert_password -AsPlainText -Force
+        Import-PfxCertificate -FilePath "$cert_path" -Password $cert_secure_password -CertStoreLocation "Cert:\LocalMachine\My"
+        # If we get this far we should be good!
+        Write-Output "We can sign!"
