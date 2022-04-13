@@ -99,10 +99,12 @@ runs:
         # Verify the code signature
         codesign -v "$SIGNFILE" --verbose
 
-    - name: Import certs
+    - name: Sign
       shell: powershell
       if: runner.os == 'Windows'
       env:
+        FILE: ${{ inputs.file }}
+        OPTIONS: ${{ inputs.options }}
         WINDOZE_CERT_DATA: ${{ inputs.certificate-data }}
         WINDOZE_CERT_PASSWORD: ${{ inputs.certificate-password }}
       run: |
@@ -127,3 +129,16 @@ runs:
         Import-PfxCertificate -FilePath "$cert_path" -Password $cert_secure_password -CertStoreLocation "Cert:\LocalMachine\My"
         # If we get this far we should be good!
         Write-Output "We can sign!"
+        # Get our file
+        $file = -join($pwd, "/", $env:FILE);
+        # Throw error if file does not exist
+        if (!(Test-Path "$file"))
+        {
+          throw "$file does not exist"
+        }
+        # Sign and verify
+        Write-Output "Trying to sign $file with $signtool..."
+        & $signtool sign -f "$cert_path" -p "$cert_password" -fd sha256 -tr "http://timestamp.comodoca.com/?td=sha256" -td sha256 -as -v "$file"
+        Write-Output "Verifying $file has been signed with the signtool..."
+        & $signtool verify -pa -v "$file"
+
