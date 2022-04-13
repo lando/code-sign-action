@@ -15,6 +15,9 @@ inputs:
   apple-team-id:
     description: "The architecture to build for x64|amd64|aarch64|arm64"
     required: false
+  options:
+    description: "Extra options to pass to the codesigning tool"
+    required: false
 
 outputs:
   file:
@@ -60,10 +63,12 @@ runs:
         fi
         echo "::endgroup::"
 
-    - name: Import certs
+    - name: Sign
       shell: bash
       if: runner.os == 'macOS'
       env:
+        FILE: ${{ inputs.file }}
+        OPTIONS: ${{ inputs.options }}
         APPLE_CERT_DATA: ${{ inputs.certificate-data }}
         APPLE_CERT_PASSWORD: ${{ inputs.certificate-password }}
         APPLE_TEAM_ID: ${{ inputs.apple-team-id }}
@@ -79,9 +84,21 @@ runs:
         security import /tmp/certs.p12 -k ~/Library/Keychains/macos-build.keychain -P "$APPLE_CERT_PASSWORD" -T /usr/bin/codesign -T /usr/bin/productsign
         # Key signing
         security set-key-partition-list -S apple-tool:,apple: -s -k actions macos-build.keychain
-        # Verify the things
+        # Verify keychain things
         security find-identity -v macos-build.keychain | grep "$APPLE_TEAM_ID" | grep "Developer ID Application"
         security find-identity -v macos-build.keychain | grep "$APPLE_TEAM_ID" | grep "Developer ID Installer"
+
+        SIGNFILE="$(pwd)/$FILE"
+        # Throw error if file does not exist
+        if [ ! -f "$SIGNFILE" ]; then
+          echo "$SIGNFILE does not exist!"
+          exit 5
+        fi
+        # Force the codesignature
+        codesign --force $OPTIONS -s "$APPLE_TEAM_ID" "$SIGNFILE"
+        # Verify the code signature
+        codesign -v "$SIGNFILE" --verbose
+
     - name: Import certs
       shell: powershell
       if: runner.os == 'Windows'
