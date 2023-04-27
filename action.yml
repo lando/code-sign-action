@@ -178,10 +178,11 @@ runs:
 
     - name: Notarize
       if: runner.os == 'macOS' && inputs.apple-notary-user && inputs.apple-notary-password && inputs.apple-product-id
-      uses: devbotsxyz/xcode-notarize@v1
+      uses: lando/notarize-action@v2
       with:
         appstore-connect-username: ${{ inputs.apple-notary-user }}
         appstore-connect-password: ${{ inputs.apple-notary-password }}
+        appstore-connect-team-id: ${{ inputs.apple-team-id }}
         primary-bundle-id: ${{ inputs.apple-product-id }}
         product-path: ${{ inputs.file }}
         verbose: true
