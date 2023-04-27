@@ -185,6 +185,7 @@ runs:
         appstore-connect-team-id: ${{ inputs.apple-team-id }}
         primary-bundle-id: ${{ inputs.apple-product-id }}
         product-path: ${{ inputs.file }}
+        tool: notarytool
         verbose: true
     - name: Verify Notarization
       if: runner.os == 'macOS' && inputs.apple-notary-user && inputs.apple-notary-password && inputs.apple-product-id
