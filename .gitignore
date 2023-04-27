@@ -1,6 +1,9 @@
 # Compiled Typescript
 lib/
 
+# Compiled pkg
+dist/@lando
+
 # Logs
 logs
 *.log
