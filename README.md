@@ -28,6 +28,7 @@ These keys are set to sane defaults but can be modified as needed.
 | `apple-notary-password` | **(Required)** for `macOS` notarization. Does nothing on `linux` and `win`. The Apple Developer account password to use in notarization. | `null` | `${{ secrets.APPLE_NOTARY_PASSWORD }}` |
 | `apple-product-id` | **(Required)** for `macOS` notarization. Does nothing on `linux` and `win`. The Apple Developer Product ID to use in notarization. | `null` | `dev.lando.code-sign-action` |
 | `apple-team-id` | **(Required)** for `macOS`. Does nothing on `linux` and `win`. The Apple Developer Program Team ID. | `null` | `FY8GAUX287` |
+| `apple-notary-password` | The `xcrun` tool to use for notarization. Does nothing on `linux` and `win`. | `notarytool` | `altool` |
 | `options` | Additional options to pass to the signing tool. | `null` | `--options runtime --entitlements entitlements.xml` |
 
 ## Outputs
@@ -72,6 +73,7 @@ jobs:
       certificate-password: ${{ secrets.APPLE_CERT_PASSWORD }}
       apple-notary-user: ${{ secrets.APPLE_NOTARY_USER }}
       apple-notary-password: ${{ secrets.APPLE_NOTARY_PASSWORD }}
+      apple-notary-tool: altool
       apple-team-id: FY8GAUX282
       apple-product-id: dev.lando.code-sign-action
       options: --options runtime --entitlements entitlements.xml
