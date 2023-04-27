@@ -21,6 +21,10 @@ inputs:
   apple-notary-user:
     description: "The Apple Developer account email to use in notarization"
     required: false
+  apple-notary-tool:
+    description: "The xcrun tool to use to notarize."
+    required: false
+    default: notarytool
   apple-product-id:
     description: "The unique product ID to use for notarization"
     required: false
@@ -185,7 +189,7 @@ runs:
         appstore-connect-team-id: ${{ inputs.apple-team-id }}
         primary-bundle-id: ${{ inputs.apple-product-id }}
         product-path: ${{ inputs.file }}
-        tool: notarytool
+        tool: ${{ inputs.apple-notary-tool }}
         verbose: true
     - name: Verify Notarization
       if: runner.os == 'macOS' && inputs.apple-notary-user && inputs.apple-notary-password && inputs.apple-product-id
