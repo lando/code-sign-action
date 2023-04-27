@@ -195,5 +195,5 @@ runs:
       id: code-sign-action
       run: |
         echo "::group::Setting outputs"
-        echo "::set-output name=file::$(pwd)/${{ inputs.file }}"
+        echo "file=$(pwd)/${{ inputs.file }}" >> $GITHUB_OUTPUT
         echo "::endgroup::"
