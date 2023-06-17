@@ -21,8 +21,7 @@
     "node": ">=14.0.0"
   },
   "devDependencies": {
-    "pkg": "^5.6.0",
-    "version-bump-prompt": "^6.1.0"
+    "pkg": "^5.6.0"
   },
   "pkg": {
     "outputPath": "dist",
@@ -35,7 +34,6 @@
     ]
   },
   "scripts": {
-    "build": "yarn pkg -c package.json -t node14 bin/test",
-    "release": "bump --tag --all --push package.json && git tag --force --annotate --message 'moving v2 tag' v2 && git push origin v2 --force"
+    "build": "yarn pkg -c package.json -t node14 bin/test"
   }
 }

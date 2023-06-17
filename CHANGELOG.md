@@ -1,3 +1,7 @@
+## v2.1.1 - [June 17, 2023](https://github.com/lando/code-sign-action/releases/tag/v2.1.1)
+
+* Switched release flow over to [@lando/prepare-release-action](https://github.com/lando/prepare-release-action)
+
 ## v2.1.0 - [April 27, 2023](https://github.com/lando/code-sign-action/releases/tag/v2.1.0)
 
 * Added support for either `altool` or `notarytool` for notarizations
