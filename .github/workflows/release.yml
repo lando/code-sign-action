@@ -29,7 +29,7 @@ jobs:
       - name: Install dependencies
         run: yarn install
       - name: Prepare release
-        uses: lando/prepare-release-action@v2
+        uses: lando/prepare-release-action@v3
         with:
           sync-token: ${{ secrets.RTFM47_COAXIUM_INJECTOR }}
           sync-email: rtfm47@lando.dev
