@@ -10,13 +10,15 @@ jobs:
       term: xterm
     strategy:
       matrix:
+        node-version:
+          - '18'
         include:
-          - os: macos-12
+          - os: macos-13
             file: dist/@lando/code-sign-action
             certificate-data: APPLE_CERT_DATA
             certificate-password: APPLE_CERT_PASSWORD
             apple-team-id: FY8GAUX282
-          - os: ubuntu-20.04
+          - os: ubuntu-22.04
             file: dist/@lando/code-sign-action
           - os: windows-2022
             file: dist/@lando/code-sign-action.exe
@@ -31,13 +33,13 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
-          cache: yarn
-      - name: Install Yarn dependencies
+          cache: npm
+      - name: Install dependencies
         shell: bash
-        run: yarn install --prefer-offline --frozen-lockfile
+        run: npm clean-install --prefer-offline --frozen-lockfile
       - name: Package node binary
         shell: bash
-        run: yarn build
+        run: npm run build
       - name: Codesign
         uses: ./
         id: code-sign-action
@@ -55,7 +57,7 @@ jobs:
           "$FILE"
 
   options-tests:
-    runs-on: macos-12
+    runs-on: macos-13
     env:
       term: xterm
     steps:
@@ -67,13 +69,13 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
-          cache: yarn
-      - name: Install Yarn dependencies
+          cache: npm
+      - name: Install dependencies
         shell: bash
-        run: yarn install --prefer-offline --frozen-lockfile
+        run: npm clean-install --prefer-offline --frozen-lockfile
       - name: Package node binary
         shell: bash
-        run: yarn build
+        run: npm run build
       - name: Codesign
         uses: ./
         with:
@@ -96,13 +98,13 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
-          cache: yarn
-      - name: Install Yarn dependencies
+          cache: npm
+      - name: Install dependencies
         shell: bash
-        run: yarn install --prefer-offline --frozen-lockfile
+        run: npm clean-install --prefer-offline --frozen-lockfile
       - name: Package node binary
         shell: bash
-        run: yarn build
+        run: npm run build
       - name: Codesign
         uses: ./
         with:
