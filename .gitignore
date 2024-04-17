@@ -67,5 +67,10 @@ yarn.lock
 # next.js build output
 .next
 
+# OS metadata
+.DS_Store
+Thumbs.db
 .vscode
+
+# testing
 id_rsa
