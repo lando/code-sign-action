@@ -127,9 +127,20 @@ runs:
 
         # Verify the code signature
         codesign -v "$SIGNFILE" --verbose
+    - name: Sign with KeyLocker
+      if: runner.os == 'Windows' && inputs.keylocker-host
+      env:
+        CERTIFICATE_HOST: ${{ inputs.keylocker-host }}
+        CERTIFICATE_HOST_API_KEY: ${{ inputs.keylocker-api-key }}
+        CERTIFICATE_SHA1_HASH: ${{ inputs.keylocker-cert-sha1-hash }}
+        CLIENT_CERTIFICATE: ${{ inputs.certificate-data }}
+        CLIENT_CERTIFICATE_PASSWORD: ${{ inputs.certificate-password }}
+      uses: cognitedata/code-sign-action/@v2
+      with:
+        path-to-binary: ${{ inputs.file }}
     - name: Sign
       shell: powershell
-      if: runner.os == 'Windows'
+      if: runner.os == 'Windows' && !inputs.code-signing-cert-host
       env:
         FILE: ${{ inputs.file }}
         OPTIONS: ${{ inputs.options }}

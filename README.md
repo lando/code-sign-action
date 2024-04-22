@@ -29,6 +29,9 @@ These keys are set to sane defaults but can be modified as needed.
 | `apple-notary-tool` | The `xcrun` tool to use for notarization. Does nothing on `linux` and `win`. | `notarytool` | `altool` |
 | `apple-product-id` | **(Required)** for `macOS` notarization. Does nothing on `linux` and `win`. The Apple Developer Product ID to use in notarization. | `null` | `dev.lando.code-sign-action` |
 | `apple-team-id` | **(Required)** for `macOS`. Does nothing on `linux` and `win`. The Apple Developer Program Team ID. | `null` | `FY8GAUX287` |
+| `keylocker-host` | The host of the KeyLocker host (DigiCert One). Adding this value is **required** to sign `win` with DigiCert KeyLocker. Adding this value will disable signing `win` via SignTool. | `null` | `https://clientauth.one.digicert.com`|
+| `keylocker-api-key` | API key for the KeyLocker host. | `null` | `${{ secrets.KEYLOCKER_API_KEY }}` |
+| `keylocker-cert-sha1-hash` | SHA1 hash for the KeyLocker host. | `null` | `${{ secrets.KEYLOCKER_CERT_SHA1_HASH }}` |  
 | `options` | Additional options to pass to the signing tool. | `null` | `--options runtime --entitlements entitlements.xml` |
 
 ## Outputs
@@ -95,6 +98,26 @@ jobs:
       certificate-data: ${{ secrets.WINDOZE_CERT_DATA }}
       certificate-password: ${{ secrets.WINDOZE_CERT_PASSWORD }}
 ```
+
+** Windows with DigiCert KeyLocker**
+
+```yaml
+jobs:
+  package:
+    runs-on: windows-2022
+  steps:
+    name: Sign binary
+    uses: lando/code-sign-action@v2
+    with:
+      file: path/to/binary
+      certificate-data: ${{ secrets.WINDOZE_CERT_DATA }}
+      certificate-password: ${{ secrets.WINDOZE_CERT_PASSWORD }}
+      keylocker-host: ${{ secrets.KEYLOCKER_HOST }}
+      keylocker-api-key: ${{ secrets.KEYLOCKER_API_KEY }}
+      keylocker-cert-sha1-hash: ${{ secrets.KEYLOCKER_CERT_SHA1_HASH }}
+```
+
+
 
 ## Changelog
 
