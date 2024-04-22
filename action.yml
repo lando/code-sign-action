@@ -31,6 +31,15 @@ inputs:
   apple-team-id:
     description: "The Apple Developer account Team ID"
     required: false
+  keylocker-api-key:
+    description: "The API key to use for KeyLocker"
+    required: false
+  keylocker-cert-sha1-hash:
+    description: "The SHA1 hash of the certificate to use for KeyLocker"
+    required: false
+  keylocker-host:
+    description: "The host to use for KeyLocker"
+    required: false
   options:
     description: "Extra options to pass to the codesigning tool"
     required: false
