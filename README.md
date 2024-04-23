@@ -15,7 +15,7 @@ These keys must be set correctly for the action to work.
 | Name | Description | Example Value |
 |---|---|---|
 | `file` | The file to sign.  | `bin/test` |
-| `certificate-data` | A `base64` encoded string of your `p12` or `pfx` cert contents. | `${{ secrets.APPLE_CERT_DATA }}` |
+| `certificate-data` | A `base64` encoded string of your `p12` or `pfx` cert contents. Note: if you use KeyLocker, this will be the base64 encoded client certificate (`SM_CLIENT_CERT_FILE`) | `${{ secrets.APPLE_CERT_DATA }}` |
 | `certificate-password` | The password to unlock the `certificate-data`. | `${{ secrets.APPLE_CERT_PASSWORD }}` |
 
 ## Optional Inputs
