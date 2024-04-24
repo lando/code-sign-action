@@ -158,7 +158,7 @@ runs:
         path-to-binary: ${{ inputs.file }}
     - name: Sign
       shell: powershell
-      if: runner.os == 'Windows' && !inputs.code-signing-cert-host
+      if: runner.os == 'Windows' && !inputs.keylocker-host
       env:
         FILE: ${{ inputs.file }}
         OPTIONS: ${{ inputs.options }}
