@@ -148,7 +148,7 @@ runs:
         CLIENT_CERTIFICATE: ${{ inputs.certificate-data }}
         CLIENT_CERTIFICATE_PASSWORD: ${{ inputs.certificate-password }}
         KEYPAIR_ALIAS: ${{ inputs.keylocker-keypair-alias }}
-      uses: reynoldsalec/code-sign-action
+      uses: reynoldsalec/code-sign-action@main
       with:
         path-to-binary: ${{ inputs.file }}
     - name: Sign
