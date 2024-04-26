@@ -143,10 +143,7 @@ runs:
         java-version: '17'
         distribution: 'temurin'
     - name: Setup Android SDK
-      uses: android-actions/setup-android@v3
-      if: runner.os == 'Windows' && inputs.keylocker-host
-      with:
-        packages: 'build-tools'
+      uses: amyu/setup-android@v4
     - name: Sign with KeyLocker
       if: runner.os == 'Windows' && inputs.keylocker-host
       env:
