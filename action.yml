@@ -57,7 +57,6 @@ runs:
   steps:
     - name: Validate required inputs
       shell: bash
-      if: runner.os != 'Linux'
       run: |
         echo "::group::Ensure file is set"
         if [ "${{ inputs.file }}" == "" ]; then
@@ -90,10 +89,9 @@ runs:
           exit 1
         fi
         echo "::endgroup::"
-
     - name: Sign
       shell: bash
-      if: runner.os == 'Linux'
+      if: runner.os == 'Linux' && !inputs.keylocker-host
       run: |
         echo "::warning:: Currently not supported on Linux!"
     - name: Sign
