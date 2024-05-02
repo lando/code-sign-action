@@ -197,7 +197,7 @@ runs:
       run: |
         curl -fSslL https://github.com/ebourg/jsign/releases/download/3.1/jsign_3.1_all.deb -o jsign_3.1_all.deb
         sudo dpkg --install jsign_3.1_all.deb
-        file_path="${{ inputs.file }}"
+        file_path = "${{ env.GITHUB_WORKSPACE }}/${{ inputs.file }}"
         for f in $(find $file_path -type f); do
           smctl sign -v --keypair-alias="${{ inputs.keylocker-keypair-alias }}" --config-file="/tmp/DigiCert One Signing Manager Tools/smtools-linux-x64/pkcs11properties.cfg" --fingerprint "${{ env.SM_CODE_SIGNING_CERT_SHA1_HASH }}" --input "$f"
           smctl sign verify --input $f.FullName
