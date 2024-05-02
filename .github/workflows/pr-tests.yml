@@ -11,21 +11,22 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        node-version:
-          - '18'
         include:
           - os: macos-13
             file: dist/@lando/code-sign-action
             certificate-data: APPLE_CERT_DATA
             certificate-password: APPLE_CERT_PASSWORD
+            node-version: '18'
           - os: ubuntu-22.04
             file: dist/@lando/code-sign-action
             certificate-data: KEYLOCKER_CLIENT_CERT
             certificate-password: KEYLOCKER_CLIENT_CERT_PASSWORD
+            node-version: '18'
           - os: windows-2022
             file: dist/@lando/code-sign-action.exe
             certificate-data: KEYLOCKER_CLIENT_CERT
             certificate-password: KEYLOCKER_CLIENT_CERT_PASSWORD
+            node-version: '18'
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
