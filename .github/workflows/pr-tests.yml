@@ -18,13 +18,14 @@ jobs:
             file: dist/@lando/code-sign-action
             certificate-data: APPLE_CERT_DATA
             certificate-password: APPLE_CERT_PASSWORD
-            apple-team-id: FY8GAUX282
           - os: ubuntu-22.04
             file: dist/@lando/code-sign-action
+            certificate-data: KEYLOCKER_CLIENT_CERT
+            certificate-password: KEYLOCKER_CLIENT_CERT_PASSWORD
           - os: windows-2022
             file: dist/@lando/code-sign-action.exe
-            certificate-data: WINDOZE_CERT_DATA
-            certificate-password: WINDOZE_CERT_PASSWORD
+            certificate-data: KEYLOCKER_CLIENT_CERT
+            certificate-password: KEYLOCKER_CLIENT_CERT_PASSWORD
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -48,8 +49,12 @@ jobs:
           file: ${{ matrix.file }}
           certificate-data: ${{ secrets[matrix.certificate-data] }}
           certificate-password: ${{ secrets[matrix.certificate-password] }}
-          apple-team-id: ${{ matrix.apple-team-id }}
-      - name: Test outputs
+          apple-team-id: FY8GAUX282
+          keylocker-host: https://clientauth.one.digicert.com
+          keylocker-api-key: ${{ secrets.KEYLOCKER_API_KEY }}
+          keylocker-cert-sha1-hash: ${{ secrets.KEYLOCKER_CERT_SHA1_HASH }}
+          keylocker-keypair-alias: ${{ secrets.KEYLOCKER_KEYPAIR_ALIAS }}
+      - name: Test outputs + execute file
         shell: bash
         env:
           FILE: ${{ steps.code-sign-action.outputs.file }}

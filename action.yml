@@ -9,7 +9,7 @@ inputs:
     description: "The file to sign"
     required: true
   certificate-data:
-    description: "A base64 encoded string of your p12 or pfx cert contents"
+    description: "A `base64` encoded string of your `p12` or `pfx` cert contents. Note: if you use KeyLocker, this will be the base64 encoded client certificate (`SM_CLIENT_CERT_FILE`)"
     required: true
   certificate-password:
     description: "The password to unlock the certificate-data"
@@ -199,7 +199,6 @@ runs:
         sudo dpkg --install jsign_3.1_all.deb
         file_path="${{ inputs.file }}"
         for f in $(find $file_path -type f); do
-          echo $f
           smctl sign -v --keypair-alias="${{ inputs.keylocker-keypair-alias }}" --config-file="/tmp/DigiCert One Signing Manager Tools/smtools-linux-x64/pkcs11properties.cfg" --fingerprint "${{ env.SM_CODE_SIGNING_CERT_SHA1_HASH }}" --input "$f"
           smctl sign verify --input $f.FullName
         done
