@@ -9,7 +9,7 @@ inputs:
     description: "The file to sign"
     required: true
   certificate-data:
-    description: "A base64 encoded string of your p12 or pfx cert contents"
+    description: "A `base64` encoded string of your `p12` or `pfx` cert contents. Note: if you use KeyLocker, this will be the base64 encoded client certificate (`SM_CLIENT_CERT_FILE`)"
     required: true
   certificate-password:
     description: "The password to unlock the certificate-data"
@@ -31,6 +31,18 @@ inputs:
   apple-team-id:
     description: "The Apple Developer account Team ID"
     required: false
+  keylocker-api-key:
+    description: "The API key to use for KeyLocker"
+    required: false
+  keylocker-cert-sha1-hash:
+    description: "The SHA1 hash of the certificate to use for KeyLocker"
+    required: false
+  keylocker-host:
+    description: "The host to use for KeyLocker"
+    required: false
+  keylocker-keypair-alias:
+    description: "The alias of the keypair to use for KeyLocker"
+    required: false
   options:
     description: "Extra options to pass to the codesigning tool"
     required: false
@@ -45,7 +57,6 @@ runs:
   steps:
     - name: Validate required inputs
       shell: bash
-      if: runner.os != 'Linux'
       run: |
         echo "::group::Ensure file is set"
         if [ "${{ inputs.file }}" == "" ]; then
@@ -78,10 +89,9 @@ runs:
           exit 1
         fi
         echo "::endgroup::"
-
     - name: Sign
       shell: bash
-      if: runner.os == 'Linux'
+      if: runner.os == 'Linux' && !inputs.keylocker-host
       run: |
         echo "::warning:: Currently not supported on Linux!"
     - name: Sign
@@ -127,9 +137,76 @@ runs:
 
         # Verify the code signature
         codesign -v "$SIGNFILE" --verbose
+    - name: Setup Certificate Windows
+      run: |
+        echo "${{ inputs.certificate-data }}" | base64 --decode > /d/cognite_code_signing_github_actions.p12
+      if: runner.os == 'Windows' && inputs.keylocker-host
+      shell: bash
+    - name: Setup Certificate Linux
+      run: |
+        echo "${{ inputs.certificate-data }}" | base64 --decode | sudo install -D /dev/stdin /d/cognite_code_signing_github_actions.p12
+      if: runner.os == 'Linux' && inputs.keylocker-host
+      shell: bash
+    - name: Set KeyLocker Variables
+      id: variables
+      run: |
+        echo "SM_HOST=${{ inputs.keylocker-host }}" >> "$GITHUB_ENV"
+        echo "SM_API_KEY=${{ inputs.keylocker-api-key }}" >> "$GITHUB_ENV"
+        echo "SM_CLIENT_CERT_PASSWORD=${{ inputs.certificate-password }}" >> "$GITHUB_ENV"
+        echo "SM_CODE_SIGNING_CERT_SHA1_HASH=${{ inputs.keylocker-cert-sha1-hash }}" >> "$GITHUB_ENV"
+        if [ "${{ runner.os }}" == "Windows" ]
+        then
+          echo "SM_CLIENT_CERT_FILE=D:\\cognite_code_signing_github_actions.p12" >> "$GITHUB_ENV"
+        elif [ "${{ runner.os }}" == "Linux" ]
+        then
+          echo "SM_CLIENT_CERT_FILE=/d/cognite_code_signing_github_actions.p12" >> "$GITHUB_ENV"
+          echo "PKCS11_CONFIG=/tmp/DigiCert One Signing Manager Tools/smtools-linux-x64/pkcs11properties.cfg" >> "$GITHUB_ENV"
+          echo "/tmp/DigiCert One Signing Manager Tools/smtools-linux-x64" >> $GITHUB_PATH
+        fi
+      if: inputs.keylocker-host
+      shell: bash
+    - name: Configure Digicert Secure Software Manager
+      uses: digicert/ssm-code-signing@v0.0.2
+      env:
+        SM_API_KEY: ${{ env.SM_API_KEY }}
+        SM_CLIENT_CERT_PASSWORD: ${{ env.SM_CLIENT_CERT_PASSWORD }}
+        SM_CLIENT_CERT_FILE: ${{ env.SM_CLIENT_CERT_FILE }}
+      if: inputs.keylocker-host
+    - name: Sign with smctl Windows
+      env:
+        GITHUB_WORKSPACE: ${{ github.workspace }}
+      run: |
+        smctl windows certsync --keypair-alias="${{ inputs.keylocker-keypair-alias }}"
+        $file_path = "${{ env.GITHUB_WORKSPACE }}\${{ inputs.file }}"
+        $files_to_sign = @()
+        if (Test-Path -Path $file_path -PathType Leaf) {
+          $files_to_sign = @([PSCustomObject]@{FullName = $file_path})
+        }
+        else {
+          Get-ChildItem -Path $file_path -File -Recurse
+          $files_to_sign = @(Get-ChildItem -Path $file_path -File -Recurse)
+        }
+        foreach ( $f in $files_to_sign )
+        {
+          smctl sign --fingerprint ${{ env.SM_CODE_SIGNING_CERT_SHA1_HASH }} --input $f.FullName
+          smctl sign verify --input $f.FullName
+        }
+      if: runner.os == 'Windows' && inputs.keylocker-host
+      shell: powershell
+    - name: Sign Linux with KeyLocker
+      run: |
+        curl -fSslL https://github.com/ebourg/jsign/releases/download/3.1/jsign_3.1_all.deb -o jsign_3.1_all.deb
+        sudo dpkg --install jsign_3.1_all.deb
+        file_path="${{ env.GITHUB_WORKSPACE }}/${{ inputs.file }}"
+        for f in $(find $file_path -type f); do
+          smctl sign -v --keypair-alias="${{ inputs.keylocker-keypair-alias }}" --config-file="/tmp/DigiCert One Signing Manager Tools/smtools-linux-x64/pkcs11properties.cfg" --fingerprint "${{ env.SM_CODE_SIGNING_CERT_SHA1_HASH }}" --input "$f"
+          smctl sign verify --input $f
+        done
+      if: runner.os == 'Linux' && inputs.keylocker-host
+      shell: bash
     - name: Sign
       shell: powershell
-      if: runner.os == 'Windows'
+      if: runner.os == 'Windows' && !inputs.keylocker-host
       env:
         FILE: ${{ inputs.file }}
         OPTIONS: ${{ inputs.options }}
