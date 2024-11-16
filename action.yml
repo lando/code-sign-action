@@ -14,6 +14,7 @@ inputs:
   certificate-password:
     description: "The password to unlock the certificate-data"
     required: true
+
   # Optional
   apple-notary-password:
     description: "The Apple Developer account password to use in notarization"
@@ -89,6 +90,7 @@ runs:
           exit 1
         fi
         echo "::endgroup::"
+
     - name: Sign
       shell: bash
       if: runner.os == 'Linux' && !inputs.keylocker-host
@@ -137,6 +139,7 @@ runs:
 
         # Verify the code signature
         codesign -v "$SIGNFILE" --verbose
+
     - name: Setup Certificate Windows
       run: |
         echo "${{ inputs.certificate-data }}" | base64 --decode > /d/cognite_code_signing_github_actions.p12
@@ -147,6 +150,7 @@ runs:
         echo "${{ inputs.certificate-data }}" | base64 --decode | sudo install -D /dev/stdin /d/cognite_code_signing_github_actions.p12
       if: runner.os == 'Linux' && inputs.keylocker-host
       shell: bash
+
     - name: Set KeyLocker Variables
       id: variables
       run: |

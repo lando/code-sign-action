@@ -12,28 +12,28 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: macos-13
+          - os: macos-14
             file: dist/@lando/code-sign-action
             certificate-data: APPLE_CERT_DATA
             certificate-password: APPLE_CERT_PASSWORD
-            node-version: '18'
-          - os: ubuntu-22.04
+            node-version: '20'
+          - os: ubuntu-24.04
             file: dist/@lando/code-sign-action
             certificate-data: KEYLOCKER_CLIENT_CERT
             certificate-password: KEYLOCKER_CLIENT_CERT_PASSWORD
-            node-version: '18'
+            node-version: '20'
           - os: windows-2022
             file: dist/@lando/code-sign-action.exe
             certificate-data: KEYLOCKER_CLIENT_CERT
             certificate-password: KEYLOCKER_CLIENT_CERT_PASSWORD
-            node-version: '18'
+            node-version: '20'
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
       - name: Install node ${{ matrix.node-version }}
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
           cache: npm
@@ -64,21 +64,21 @@ jobs:
           "$FILE"
 
   options-tests:
-    runs-on: macos-13
+    runs-on: macos-14
     env:
       term: xterm
     strategy:
       fail-fast: false
       matrix:
         node-version:
-          - '18'
+          - '20'
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
       - name: Install node ${{ matrix.node-version }}
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
           cache: npm
@@ -98,21 +98,21 @@ jobs:
           options: --options runtime --entitlements entitlements.xml
 
   notarize-tests:
-    runs-on: macos-13
+    runs-on: macos-14
     env:
       term: xterm
     strategy:
       fail-fast: false
       matrix:
         node-version:
-          - '18'
+          - '20'
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
       - name: Install node ${{ matrix.node-version }}
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
           cache: npm

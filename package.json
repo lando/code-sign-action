@@ -18,10 +18,7 @@
     "Github Actions"
   ],
   "engines": {
-    "node": ">=14.0.0"
-  },
-  "devDependencies": {
-    "pkg": "^5.6.0"
+    "node": ">=18.0.0"
   },
   "pkg": {
     "outputPath": "dist",
@@ -35,5 +32,8 @@
   },
   "scripts": {
     "build": "yarn pkg -c package.json -t node14 bin/test"
+  },
+  "devDependencies": {
+    "@yao-pkg/pkg": "^6.1.1"
   }
 }
