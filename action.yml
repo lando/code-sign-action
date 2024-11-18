@@ -129,7 +129,7 @@ runs:
           echo "notarize=true" >> $GITHUB_OUTPUT
         fi
 
-    - name: Set filey internal inputs
+    - name: Set osy internal inputs
       shell: powershell
       if: runner.os == 'Windows'
       id: code-sign-action-win-internal
@@ -145,7 +145,7 @@ runs:
           Write-Output "file=$(Get-Location)/${{ inputs.file }}" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
         }
 
-    - name: Set filey internal inputs
+    - name: Set osy internal inputs
       shell: bash
       if: runner.os != 'Windows'
       id: code-sign-action-posix-internal
@@ -195,13 +195,12 @@ runs:
       if: steps.code-sign-action-internal.outputs.os == 'linux'
       run: |
         # supported codesigner
-        if [ "${{ steps.code-sign-action-internal.outputs.signtool }}" != "osslsigncode" ]
+        if [ "${{ steps.code-sign-action-internal.outputs.signtool }}" != "osslsigncode" ] \
           || [ "${{ steps.code-sign-action-internal.outputs.signtool }}" != "keylocker" ] \
           || [ "${{ steps.code-sign-action-internal.outputs.signtool }}" != "smctl" ]; then
           echo "::error title=${{ steps.code-sign-action-internal.outputs.signtool }} is unsupported on ${{ runner.os }}!::You must specify osslsigncode, keylocker or smctl as your signtool!"
           exit 1
         fi
-
     - name: Validate macos specific inputs
       shell: bash
       if: steps.code-sign-action-internal.outputs.os == 'macos'
@@ -217,18 +216,35 @@ runs:
           echo "::error title=apple-team-id is not set!::You must specify an apple-team-id to sign!"
           exit 1
         fi
-
     - name: Validate windows specific inputs
       shell: bash
       if: steps.code-sign-action-internal.outputs.os == 'win'
       run: |
         # supported codesigner
-        if [ "${{ steps.code-sign-action-internal.outputs.signtool }}" != "signtool" ]
+        if [ "${{ steps.code-sign-action-internal.outputs.signtool }}" != "signtool" ] \
           || [ "${{ steps.code-sign-action-internal.outputs.signtool }}" != "keylocker" ] \
           || [ "${{ steps.code-sign-action-internal.outputs.signtool }}" != "smctl" ]; then
           echo "::error title=${{ steps.code-sign-action-internal.outputs.signtool }} is unsupported on ${{ runner.os }}!::You must specify signtool, keylocker or smctl as your signtool!"
           exit 1
         fi
+
+    - name: Dump certs
+      shell: bash
+      if: steps.code-sign-action-internal.outputs.os == 'linux'
+      run: echo "${{ inputs.certificate-data }}" | base64 --decode | sudo install -D /dev/stdin > "${{ steps.code-sign-action-internal.outputs.signcert }}"
+    - name: Dump certs
+      shell: bash
+      if: steps.code-sign-action-internal.outputs.os == 'macos'
+      run: echo "${{ inputs.certificate-data }}" | base64 --decode > "${{ steps.code-sign-action-internal.outputs.signcert }}"
+    - name: Dump certs
+      shell: powershell
+      if: steps.code-sign-action-internal.outputs.os == 'win'
+      run: |
+        If (!(Test-Path "${{ steps.code-sign-action-internal.outputs.signcert }}")) {
+          Write-Output "Dumping cert to ${{ steps.code-sign-action-internal.outputs.signcert }}..."
+          $bytes = [Convert]::FromBase64String("${{ inputs.certificate-data }}")
+          [IO.File]::WriteAllBytes("${{ steps.code-sign-action-internal.outputs.signcert }}", $bytes)
+        }
 
     # - name: Sign
     #   shell: bash
@@ -278,17 +294,6 @@ runs:
 
     #     # Verify the code signature
     #     codesign -v "$SIGNFILE" --verbose
-
-    # - name: Setup Certificate Windows
-    #   run: |
-    #     echo "${{ inputs.certificate-data }}" | base64 --decode > /d/cognite_code_signing_github_actions.p12
-    #   if: runner.os == 'Windows' && inputs.keylocker-host
-    #   shell: bash
-    # - name: Setup Certificate Linux
-    #   run: |
-    #     echo "${{ inputs.certificate-data }}" | base64 --decode | sudo install -D /dev/stdin /d/cognite_code_signing_github_actions.p12
-    #   if: runner.os == 'Linux' && inputs.keylocker-host
-    #   shell: bash
 
     # - name: Set KeyLocker Variables
     #   id: variables
