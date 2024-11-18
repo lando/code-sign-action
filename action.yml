@@ -232,21 +232,27 @@ runs:
       shell: bash
       if: steps.code-sign-action-internal.outputs.os == 'linux'
       run: |
+        echo "::group::Dumping inputs.certificate-data"
         echo "Dumping cert to ${{ steps.code-sign-action-internal.outputs.signcert }}..."
         echo "${{ inputs.certificate-data }}" | base64 --decode | sudo install -D /dev/stdin "${{ steps.code-sign-action-internal.outputs.signcert }}"
+        echo "::endgroup::"
     - name: Dump certs
       shell: bash
       if: steps.code-sign-action-internal.outputs.os == 'macos'
       run: |
+        echo "::group::Dumping inputs.certificate-data"
         echo "Dumping cert to ${{ steps.code-sign-action-internal.outputs.signcert }}..."
         echo "${{ inputs.certificate-data }}" | base64 --decode > "${{ steps.code-sign-action-internal.outputs.signcert }}"
+        echo "::endgroup::"
     - name: Dump certs
       shell: powershell
       if: steps.code-sign-action-internal.outputs.os == 'win'
       run: |
+        echo "::group::Dumping inputs.certificate-data"
         Write-Output "Dumping cert to ${{ steps.code-sign-action-internal.outputs.signcert }}..."
         $bytes = [Convert]::FromBase64String("${{ inputs.certificate-data }}")
         [IO.File]::WriteAllBytes("${{ steps.code-sign-action-internal.outputs.signcert }}", $bytes)
+        echo "::endgroup::"
 
     # @TODO: signing with osslsigncode on linux
 
@@ -255,9 +261,11 @@ runs:
       shell: bash
       if: steps.code-sign-action-internal.outputs.signtool == 'codesign'
       run: |
-        # Setup
+        echo "::group::Signing setup
         SIGNFILE="${{ steps.code-sign-action-internal.outputs.file }}"
         SIGNCERT="${{ steps.code-sign-action-internal.outputs.signcert }}"
+        echo "signfile=$SIGNFILE"
+        echo "signcert=$SIGNCERT"
 
         # Throw error if file does not exist
         if [ ! -f "$SIGNFILE" ]; then
@@ -275,19 +283,19 @@ runs:
         security import "$SIGNCERT" -k ~/Library/Keychains/macos-build.keychain -P "${{ inputs.certificate-password }}" -T /usr/bin/codesign -T /usr/bin/productsign
 
         # Key signing
-        echo "hi"
         security set-key-partition-list -S apple-tool:,apple: -s -k actions macos-build.keychain
-        echo "hello"
 
-        # Verify keychain things
-        security find-identity -v macos-build.keychain | grep "${{ inputs.apple-team-id }}" | grep "Developer ID Application"
-        security find-identity -v macos-build.keychain | grep "${{ inputs.apple-team-id }}" | grep "Developer ID Installer"
+        # Scope out the keychain
+        security find-identity -v macos-build.keychain
+        echo "::endgroup::"
 
+        echo "::group::Signing
         # Force the codesignature
         codesign --force ${{ inputs.options }} -s "${{ inputs.apple-team-id }}" "$SIGNFILE"
 
         # Verify the code signature
         codesign -v "$SIGNFILE" --verbose
+        echo "::endgroup::"
 
     # @TODO: signing with signtool on windows
 
