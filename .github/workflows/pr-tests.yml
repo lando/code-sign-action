@@ -53,31 +53,26 @@ jobs:
           sudo update-ca-certificates
       - name: Trust test certs
         shell: bash
-        env:
-          CERT: ${{ secrets.DEFAULT_CERT_DATA }}
-          PASSWORD: ${{ secrets.DEFAULT_CERT_PASSWORD }}
         if: runner.os == 'macOS'
         run: |
           # dump
-          echo "$CERT" | base64 --decode > /tmp/LandoCodeSigningTest.p12
+          echo "${{ secrets.DEFAULT_CERT_DATA }}" | base64 --decode > /tmp/LandoCodeSigningTest.p12
 
           # extract
-          openssl pkcs12 -in /tmp/LandoCodeSigningTest.p12 -clcerts -nokeys -out /tmp/LandoCodeSigningTest.pem -password pass:$PASSWORD
+          openssl pkcs12 -in /tmp/LandoCodeSigningTest.p12 -clcerts -nokeys -out /tmp/LandoCodeSigningTest.pem -password pass:${{ secrets.DEFAULT_CERT_PASSWORD }}
 
           # trust
           sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain /tmp/LandoCodeSigningTest.pem
+          sudo security find-identity -v /Library/Keychains/System.keychain
       - name: Trust test certs
         shell: powershell
-        env:
-          CERT: ${{ secrets.DEFAULT_CERT_DATA }}
-          PASSWORD: ${{ secrets.DEFAULT_CERT_PASSWORD }}
         if: runner.os == 'Windows'
         run: |
           # vars
           $temp_dir = "$env:TMP"
-          $cert_data = "$env:CERT"
+          $cert_data = "${{ secrets.DEFAULT_CERT_DATA }}"
           $cert_path = "$temp_dir\LandoCodeSigningTest.p12"
-          $cert_password = "$env:PASSWORD"
+          $cert_password = "${{ secrets.DEFAULT_CERT_PASSWORD }}"
           $cert_secure_password = ConvertTo-SecureString -String $cert_password -Force -AsPlainText
           $cert_store  = "Cert:\LocalMachine\Root"
 
@@ -90,7 +85,6 @@ jobs:
 
           # trust
           Import-PfxCertificate -FilePath $cert_path -CertStoreLocation $cert_store -Password $cert_secure_password
-
       - name: Codesign
         uses: ./
         id: code-sign-action
