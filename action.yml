@@ -166,17 +166,19 @@ runs:
       id: code-sign-action-internal
       run: |
         # generics
-        echo "notarize=${{ steps.code-sign-action-generic-internal.notarize }}" >> $GITHUB_OUTPUT
-        echo "os=${{ steps.code-sign-action-generic-internal.os }}" >> $GITHUB_OUTPUT
-        echo "signtool=${{ steps.code-sign-action-generic-internal.signtool }}" >> $GITHUB_OUTPUT
+        echo "code-sign-action-generic-internal
+
+        echo "notarize=${{ steps.code-sign-action-generic-internal.outputs.notarize }}" >> $GITHUB_OUTPUT
+        echo "os=${{ steps.code-sign-action-generic-internal.outputs.os }}" >> $GITHUB_OUTPUT
+        echo "signtool=${{ steps.code-sign-action-generic-internal.outputs.signtool }}" >> $GITHUB_OUTPUT
 
         # osy
         if [ "${{ runner.os }}" == "Windows" ]; then
-          echo "file=${{ steps.code-sign-action-win-internal.file }}" >> $GITHUB_OUTPUT
-          echo "signcert=${{ steps.code-sign-action-win-internal.signcert }}" >> $GITHUB_OUTPUT
+          echo "file=${{ steps.code-sign-action-win-internal.outputs.file }}" >> $GITHUB_OUTPUT
+          echo "signcert=${{ steps.code-sign-action-win-internal.outputs.signcert }}" >> $GITHUB_OUTPUT
         else
-          echo "file=${{ steps.code-sign-action-posix-internal.file }}" >> $GITHUB_OUTPUT
-          echo "signcert=${{ steps.code-sign-action-posix-internal.signcert }}" >> $GITHUB_OUTPUT
+          echo "file=${{ steps.code-sign-action-posix-internal.outputs.file }}" >> $GITHUB_OUTPUT
+          echo "signcert=${{ steps.code-sign-action-posix-internal.outputs.signcert }}" >> $GITHUB_OUTPUT
         fi
 
     - name: Verify Outputs
