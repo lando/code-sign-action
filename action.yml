@@ -114,12 +114,10 @@ runs:
           # osslsigncode
           elif [ "${{ runner.os }}" == "Linux" ]; then
             echo "signtool=osslsigncode" >> $GITHUB_OUTPUT
-          fi
 
           # codesign
           elif [ "${{ runner.os }}" == "macOS" ]; then
             echo "signtool=codesign" >> $GITHUB_OUTPUT
-          fi
         fi
 
         # notarize logix
