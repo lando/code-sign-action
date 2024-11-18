@@ -166,8 +166,6 @@ runs:
       id: code-sign-action-internal
       run: |
         # generics
-        echo "code-sign-action-generic-internal
-
         echo "notarize=${{ steps.code-sign-action-generic-internal.outputs.notarize }}" >> $GITHUB_OUTPUT
         echo "os=${{ steps.code-sign-action-generic-internal.outputs.os }}" >> $GITHUB_OUTPUT
         echo "signtool=${{ steps.code-sign-action-generic-internal.outputs.signtool }}" >> $GITHUB_OUTPUT
