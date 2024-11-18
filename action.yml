@@ -173,7 +173,7 @@ runs:
         echo "signcert=${{ steps.code-sign-action-files-internal.signcert }}" >> $GITHUB_OUTPUT
         echo "signtool=${{ steps.code-sign-action-generic-internal.signtool }}" >> $GITHUB_OUTPUT
 
-- name: Verify Outputs
+    - name: Verify Outputs
       shell: bash
       run: |
         echo "::group::Internal output information"
