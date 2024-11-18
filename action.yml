@@ -261,7 +261,6 @@ runs:
       shell: bash
       if: steps.code-sign-action-internal.outputs.signtool == 'codesign'
       run: |
-        echo "::group::Signing setup
         # Throw error if file does not exist
         if [ ! -f "${{ steps.code-sign-action-internal.outputs.file }}" ]; then
           echo "${{ steps.code-sign-action-internal.outputs.file }} does not exist!"
@@ -282,15 +281,12 @@ runs:
 
         # Scope out the keychain
         security find-identity -v macos-build.keychain
-        echo "::endgroup::"
 
-        echo "::group::Signing
         # Force the codesignature
         codesign --force ${{ inputs.options }} -s "${{ inputs.apple-team-id }}" "${{ steps.code-sign-action-internal.outputs.file }}"
 
         # Verify the code signature
         codesign -v "${{ steps.code-sign-action-internal.outputs.file }}" --verbose
-        echo "::endgroup::"
 
     # @TODO: signing with signtool on windows
 
