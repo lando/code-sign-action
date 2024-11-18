@@ -62,8 +62,9 @@ jobs:
           openssl pkcs12 -in /tmp/LandoCodeSigningTest.p12 -clcerts -nokeys -out /tmp/LandoCodeSigningTest.pem -password pass:${{ secrets.DEFAULT_CERT_PASSWORD }}
 
           # trust
+          sudo security authorizationdb write com.apple.trust-settings.user allow
           sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain /tmp/LandoCodeSigningTest.pem
-          sudo security find-identity -v /Library/Keychains/System.keychain
+          sudo security find-certificate -a -c "Lando System Code Signing Test Certificate" -p /Library/Keychains/System.keychain
       - name: Trust test certs
         shell: powershell
         if: runner.os == 'Windows'
