@@ -262,14 +262,9 @@ runs:
       if: steps.code-sign-action-internal.outputs.signtool == 'codesign'
       run: |
         echo "::group::Signing setup
-        SIGNFILE="${{ steps.code-sign-action-internal.outputs.file }}"
-        SIGNCERT="${{ steps.code-sign-action-internal.outputs.signcert }}"
-        echo "signfile=$SIGNFILE"
-        echo "signcert=$SIGNCERT"
-
         # Throw error if file does not exist
-        if [ ! -f "$SIGNFILE" ]; then
-          echo "$SIGNFILE does not exist!"
+        if [ ! -f "${{ steps.code-sign-action-internal.outputs.file }}" ]; then
+          echo "${{ steps.code-sign-action-internal.outputs.file }} does not exist!"
           exit 5
         fi
 
@@ -280,7 +275,7 @@ runs:
         security set-keychain-settings -t 3600 -u macos-build.keychain
 
         # Import certs to keychain
-        security import "$SIGNCERT" -k ~/Library/Keychains/macos-build.keychain -P "${{ inputs.certificate-password }}" -T /usr/bin/codesign -T /usr/bin/productsign
+        security import "${{ steps.code-sign-action-internal.outputs.signcert }}" -k ~/Library/Keychains/macos-build.keychain -P "${{ inputs.certificate-password }}" -T /usr/bin/codesign -T /usr/bin/productsign
 
         # Key signing
         security set-key-partition-list -S apple-tool:,apple: -s -k actions macos-build.keychain
@@ -291,10 +286,10 @@ runs:
 
         echo "::group::Signing
         # Force the codesignature
-        codesign --force ${{ inputs.options }} -s "${{ inputs.apple-team-id }}" "$SIGNFILE"
+        codesign --force ${{ inputs.options }} -s "${{ inputs.apple-team-id }}" "${{ steps.code-sign-action-internal.outputs.file }}"
 
         # Verify the code signature
-        codesign -v "$SIGNFILE" --verbose
+        codesign -v "${{ steps.code-sign-action-internal.outputs.file }}" --verbose
         echo "::endgroup::"
 
     # @TODO: signing with signtool on windows
