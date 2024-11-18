@@ -47,6 +47,10 @@ inputs:
   options:
     description: "Extra options to pass to the codesigning tool"
     required: false
+  signtool:
+    description: "The signtool to use"
+    required: false
+    default: auto
 
 outputs:
   file:
@@ -56,7 +60,7 @@ outputs:
 runs:
   using: composite
   steps:
-    - name: Validate required inputs
+    - name: Validate user inputs
       shell: bash
       run: |
         echo "::group::Ensure file is set"
@@ -80,6 +84,107 @@ runs:
         fi
         echo "::endgroup::"
 
+    - name: Set generic internal inputs
+      shell: bash
+      id: code-sign-action-generic-internal
+      run: |
+        # standardize os stuff
+        if [ "${{ runner.os }}" == "Linux" ]; then
+          echo "os=linux" >> $GITHUB_OUTPUT
+        elif [ "${{ runner.os }}" == "macOS" ]; then
+          echo "os=macos" >> $GITHUB_OUTPUT
+        elif [ "${{ runner.os }}" == "Windows" ]; then
+          echo "os=win" >> $GITHUB_OUTPUT
+        fi
+
+        # signtool discovery if needed
+        if [ "${{ inputs.signtool == 'auto' }}" ]; then
+          # keylocker
+          if [ "${{ runner.os }}" != "macOS" ] \
+            && [[ -n "${{ inputs.keylocker-api-key }}" ]] \
+            && [[ -n "${{ inputs.keylocker-cert-sha1-hash }}" ]] \
+            && [[ -n "${{ inputs.host }}" ]] \
+            && [[ -n "${{ inputs.keylocker-keypair-alias }}" ]]; then
+            echo "signtool=keylocker" >> $GITHUB_OUTPUT
+
+          # signtool
+          elif [ "${{ runner.os }}" == "Windows" ]; then
+            echo "signtool=signtool" >> $GITHUB_OUTPUT
+
+          # osslsigncode
+          elif [ "${{ runner.os }}" == "Linux" ]; then
+            echo "signtool=osslsigncode" >> $GITHUB_OUTPUT
+          fi
+
+          # codesign
+          elif [ "${{ runner.os }}" == "macOS" ]; then
+            echo "signtool=codesign" >> $GITHUB_OUTPUT
+          fi
+        fi
+
+        # notarize logix
+        if [ "${{ runner.os }}" = "macOS" ] \
+          && [[ -n "${{ inputs.apple-notary-password: }}" ]] \
+          && [[ -n "${{ inputs.apple-notary-user }}" ]] \
+          && [[ -n "${{ inputs.apple-product-id }}" ]]; then
+          echo "notarize=true" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Set filey internal inputs
+      shell: powershell
+      if: os.runner == 'Windows'
+      id: code-sign-action-files-internal
+      run: |
+        # sign cert
+        $certpath = "$env:RUNNER_TEMP\signcert.p12"
+        Write-Output "signcert=$certpath" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+
+        # input file
+        if ((Split-Path -Path "${{ inputs.file }}" -IsAbsolute) -eq $true) {
+          Write-Output "file=${{ inputs.file }}" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+        } else {
+          Write-Output "file=$(Get-Location)/${{ inputs.file }}" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+        }
+
+    - name: Set filey internal inputs
+      shell: bash
+      if: os.runner != 'Windows'
+      id: code-sign-action-files-internal
+      run: |
+        # sign cert
+        certpath="$RUNNER_TEMP/signcert.p12"
+        echo "signcert=$certpath" >> $GITHUB_OUTPUT
+
+        # input file
+        if [[ "${{ inputs.file }}" == /* ]]; then
+          echo "file=${{ inputs.file }}" >> $GITHUB_OUTPUT
+        else
+          echo "file=$(pwd)/${{ inputs.file }}" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Set internal inputs
+      shell: bash
+      id: code-sign-action-internal
+      run: |
+        # sign cert
+        echo "file=${{ steps.code-sign-action-files-internal.file }}" >> $GITHUB_OUTPUT
+        echo "notarize=${{ steps.code-sign-action-generic-internal.notarize }}" >> $GITHUB_OUTPUT
+        echo "os=${{ steps.code-sign-action-generic-internal.os }}" >> $GITHUB_OUTPUT
+        echo "signcert=${{ steps.code-sign-action-files-internal.signcert }}" >> $GITHUB_OUTPUT
+        echo "signtool=${{ steps.code-sign-action-generic-internal.signtool }}" >> $GITHUB_OUTPUT
+
+- name: Verify Outputs
+      shell: bash
+      run: |
+        echo "::group::Internal output information"
+        echo "file=${{ steps.code-sign-action-internal.outputs.file }}"
+        echo "notarize=${{ steps.code-sign-action-internal.outputs.notarize }}"
+        echo "os=${{ steps.code-sign-action-internal.outputs.os }}"
+        echo "signcert=${{ steps.code-sign-action-internal.outputs.signcert }}"
+        echo "signtool=${{ steps.code-sign-action-internal.outputs.signtool }}"
+        echo "::endgroup::"
+
+
     - name: Validate macos specific inputs
       shell: bash
       if: runner.os == 'macOS'
@@ -91,196 +196,196 @@ runs:
         fi
         echo "::endgroup::"
 
-    - name: Sign
-      shell: bash
-      if: runner.os == 'Linux' && !inputs.keylocker-host
-      run: |
-        echo "::warning:: Currently not supported on Linux!"
-    - name: Sign
-      shell: bash
-      if: runner.os == 'macOS'
-      env:
-        FILE: ${{ inputs.file }}
-        OPTIONS: ${{ inputs.options }}
-        APPLE_CERT_DATA: ${{ inputs.certificate-data }}
-        APPLE_CERT_PASSWORD: ${{ inputs.certificate-password }}
-        APPLE_TEAM_ID: ${{ inputs.apple-team-id }}
-      run: |
-        # Setup
-        SIGNFILE="$(pwd)/$FILE"
+    # - name: Sign
+    #   shell: bash
+    #   if: runner.os == 'Linux' && !inputs.keylocker-host
+    #   run: |
+    #     echo "::warning:: Currently not supported on Linux!"
+    # - name: Sign
+    #   shell: bash
+    #   if: runner.os == 'macOS'
+    #   env:
+    #     FILE: ${{ inputs.file }}
+    #     OPTIONS: ${{ inputs.options }}
+    #     APPLE_CERT_DATA: ${{ inputs.certificate-data }}
+    #     APPLE_CERT_PASSWORD: ${{ inputs.certificate-password }}
+    #     APPLE_TEAM_ID: ${{ inputs.apple-team-id }}
+    #   run: |
+    #     # Setup
+    #     SIGNFILE="$(pwd)/$FILE"
 
-        # Throw error if file does not exist
-        if [ ! -f "$SIGNFILE" ]; then
-          echo "$SIGNFILE does not exist!"
-          exit 5
-        fi
+    #     # Throw error if file does not exist
+    #     if [ ! -f "$SIGNFILE" ]; then
+    #       echo "$SIGNFILE does not exist!"
+    #       exit 5
+    #     fi
 
-        # Export certs
-        echo "$APPLE_CERT_DATA" | base64 --decode > /tmp/certs.p12
+    #     # Export certs
+    #     echo "$APPLE_CERT_DATA" | base64 --decode > /tmp/certs.p12
 
-        # Create keychain
-        security create-keychain -p actions macos-build.keychain
-        security default-keychain -s macos-build.keychain
-        security unlock-keychain -p actions macos-build.keychain
-        security set-keychain-settings -t 3600 -u macos-build.keychain
+    #     # Create keychain
+    #     security create-keychain -p actions macos-build.keychain
+    #     security default-keychain -s macos-build.keychain
+    #     security unlock-keychain -p actions macos-build.keychain
+    #     security set-keychain-settings -t 3600 -u macos-build.keychain
 
-        # Import certs to keychain
-        security import /tmp/certs.p12 -k ~/Library/Keychains/macos-build.keychain -P "$APPLE_CERT_PASSWORD" -T /usr/bin/codesign -T /usr/bin/productsign
+    #     # Import certs to keychain
+    #     security import /tmp/certs.p12 -k ~/Library/Keychains/macos-build.keychain -P "$APPLE_CERT_PASSWORD" -T /usr/bin/codesign -T /usr/bin/productsign
 
-        # Key signing
-        security set-key-partition-list -S apple-tool:,apple: -s -k actions macos-build.keychain
+    #     # Key signing
+    #     security set-key-partition-list -S apple-tool:,apple: -s -k actions macos-build.keychain
 
-        # Verify keychain things
-        security find-identity -v macos-build.keychain | grep "$APPLE_TEAM_ID" | grep "Developer ID Application"
-        security find-identity -v macos-build.keychain | grep "$APPLE_TEAM_ID" | grep "Developer ID Installer"
+    #     # Verify keychain things
+    #     security find-identity -v macos-build.keychain | grep "$APPLE_TEAM_ID" | grep "Developer ID Application"
+    #     security find-identity -v macos-build.keychain | grep "$APPLE_TEAM_ID" | grep "Developer ID Installer"
 
-        # Force the codesignature
-        codesign --force $OPTIONS -s "$APPLE_TEAM_ID" "$SIGNFILE"
+    #     # Force the codesignature
+    #     codesign --force $OPTIONS -s "$APPLE_TEAM_ID" "$SIGNFILE"
 
-        # Verify the code signature
-        codesign -v "$SIGNFILE" --verbose
+    #     # Verify the code signature
+    #     codesign -v "$SIGNFILE" --verbose
 
-    - name: Setup Certificate Windows
-      run: |
-        echo "${{ inputs.certificate-data }}" | base64 --decode > /d/cognite_code_signing_github_actions.p12
-      if: runner.os == 'Windows' && inputs.keylocker-host
-      shell: bash
-    - name: Setup Certificate Linux
-      run: |
-        echo "${{ inputs.certificate-data }}" | base64 --decode | sudo install -D /dev/stdin /d/cognite_code_signing_github_actions.p12
-      if: runner.os == 'Linux' && inputs.keylocker-host
-      shell: bash
+    # - name: Setup Certificate Windows
+    #   run: |
+    #     echo "${{ inputs.certificate-data }}" | base64 --decode > /d/cognite_code_signing_github_actions.p12
+    #   if: runner.os == 'Windows' && inputs.keylocker-host
+    #   shell: bash
+    # - name: Setup Certificate Linux
+    #   run: |
+    #     echo "${{ inputs.certificate-data }}" | base64 --decode | sudo install -D /dev/stdin /d/cognite_code_signing_github_actions.p12
+    #   if: runner.os == 'Linux' && inputs.keylocker-host
+    #   shell: bash
 
-    - name: Set KeyLocker Variables
-      id: variables
-      run: |
-        echo "SM_HOST=${{ inputs.keylocker-host }}" >> "$GITHUB_ENV"
-        echo "SM_API_KEY=${{ inputs.keylocker-api-key }}" >> "$GITHUB_ENV"
-        echo "SM_CLIENT_CERT_PASSWORD=${{ inputs.certificate-password }}" >> "$GITHUB_ENV"
-        echo "SM_CODE_SIGNING_CERT_SHA1_HASH=${{ inputs.keylocker-cert-sha1-hash }}" >> "$GITHUB_ENV"
-        if [ "${{ runner.os }}" == "Windows" ]
-        then
-          echo "SM_CLIENT_CERT_FILE=D:\\cognite_code_signing_github_actions.p12" >> "$GITHUB_ENV"
-        elif [ "${{ runner.os }}" == "Linux" ]
-        then
-          echo "SM_CLIENT_CERT_FILE=/d/cognite_code_signing_github_actions.p12" >> "$GITHUB_ENV"
-          echo "PKCS11_CONFIG=/tmp/DigiCert One Signing Manager Tools/smtools-linux-x64/pkcs11properties.cfg" >> "$GITHUB_ENV"
-          echo "/tmp/DigiCert One Signing Manager Tools/smtools-linux-x64" >> $GITHUB_PATH
-        fi
-      if: inputs.keylocker-host
-      shell: bash
-    - name: Configure Digicert Secure Software Manager
-      uses: digicert/ssm-code-signing@v0.0.2
-      env:
-        SM_API_KEY: ${{ env.SM_API_KEY }}
-        SM_CLIENT_CERT_PASSWORD: ${{ env.SM_CLIENT_CERT_PASSWORD }}
-        SM_CLIENT_CERT_FILE: ${{ env.SM_CLIENT_CERT_FILE }}
-      if: inputs.keylocker-host
-    - name: Sign with smctl Windows
-      env:
-        GITHUB_WORKSPACE: ${{ github.workspace }}
-      run: |
-        smctl windows certsync --keypair-alias="${{ inputs.keylocker-keypair-alias }}"
-        $file_path = "${{ env.GITHUB_WORKSPACE }}\${{ inputs.file }}"
-        $files_to_sign = @()
-        if (Test-Path -Path $file_path -PathType Leaf) {
-          $files_to_sign = @([PSCustomObject]@{FullName = $file_path})
-        }
-        else {
-          Get-ChildItem -Path $file_path -File -Recurse
-          $files_to_sign = @(Get-ChildItem -Path $file_path -File -Recurse)
-        }
-        foreach ( $f in $files_to_sign )
-        {
-          smctl sign --fingerprint ${{ env.SM_CODE_SIGNING_CERT_SHA1_HASH }} --input $f.FullName
-          smctl sign verify --input $f.FullName
-        }
-      if: runner.os == 'Windows' && inputs.keylocker-host
-      shell: powershell
-    - name: Sign Linux with KeyLocker
-      run: |
-        curl -fSslL https://github.com/ebourg/jsign/releases/download/3.1/jsign_3.1_all.deb -o jsign_3.1_all.deb
-        sudo dpkg --install jsign_3.1_all.deb
-        file_path="${{ env.GITHUB_WORKSPACE }}/${{ inputs.file }}"
-        for f in $(find $file_path -type f); do
-          smctl sign -v --keypair-alias="${{ inputs.keylocker-keypair-alias }}" --config-file="/tmp/DigiCert One Signing Manager Tools/smtools-linux-x64/pkcs11properties.cfg" --fingerprint "${{ env.SM_CODE_SIGNING_CERT_SHA1_HASH }}" --input "$f"
-          smctl sign verify --input $f
-        done
-      if: runner.os == 'Linux' && inputs.keylocker-host
-      shell: bash
-    - name: Sign
-      shell: powershell
-      if: runner.os == 'Windows' && !inputs.keylocker-host
-      env:
-        FILE: ${{ inputs.file }}
-        OPTIONS: ${{ inputs.options }}
-        WINDOZE_CERT_DATA: ${{ inputs.certificate-data }}
-        WINDOZE_CERT_PASSWORD: ${{ inputs.certificate-password }}
-      run: |
-        $ErrorActionPreference = "Stop"
+    # - name: Set KeyLocker Variables
+    #   id: variables
+    #   run: |
+    #     echo "SM_HOST=${{ inputs.keylocker-host }}" >> "$GITHUB_ENV"
+    #     echo "SM_API_KEY=${{ inputs.keylocker-api-key }}" >> "$GITHUB_ENV"
+    #     echo "SM_CLIENT_CERT_PASSWORD=${{ inputs.certificate-password }}" >> "$GITHUB_ENV"
+    #     echo "SM_CODE_SIGNING_CERT_SHA1_HASH=${{ inputs.keylocker-cert-sha1-hash }}" >> "$GITHUB_ENV"
+    #     if [ "${{ runner.os }}" == "Windows" ]
+    #     then
+    #       echo "SM_CLIENT_CERT_FILE=D:\\cognite_code_signing_github_actions.p12" >> "$GITHUB_ENV"
+    #     elif [ "${{ runner.os }}" == "Linux" ]
+    #     then
+    #       echo "SM_CLIENT_CERT_FILE=/d/cognite_code_signing_github_actions.p12" >> "$GITHUB_ENV"
+    #       echo "PKCS11_CONFIG=/tmp/DigiCert One Signing Manager Tools/smtools-linux-x64/pkcs11properties.cfg" >> "$GITHUB_ENV"
+    #       echo "/tmp/DigiCert One Signing Manager Tools/smtools-linux-x64" >> $GITHUB_PATH
+    #     fi
+    #   if: inputs.keylocker-host
+    #   shell: bash
+    # - name: Configure Digicert Secure Software Manager
+    #   uses: digicert/ssm-code-signing@v0.0.2
+    #   env:
+    #     SM_API_KEY: ${{ env.SM_API_KEY }}
+    #     SM_CLIENT_CERT_PASSWORD: ${{ env.SM_CLIENT_CERT_PASSWORD }}
+    #     SM_CLIENT_CERT_FILE: ${{ env.SM_CLIENT_CERT_FILE }}
+    #   if: inputs.keylocker-host
+    # - name: Sign with smctl Windows
+    #   env:
+    #     GITHUB_WORKSPACE: ${{ github.workspace }}
+    #   run: |
+    #     smctl windows certsync --keypair-alias="${{ inputs.keylocker-keypair-alias }}"
+    #     $file_path = "${{ env.GITHUB_WORKSPACE }}\${{ inputs.file }}"
+    #     $files_to_sign = @()
+    #     if (Test-Path -Path $file_path -PathType Leaf) {
+    #       $files_to_sign = @([PSCustomObject]@{FullName = $file_path})
+    #     }
+    #     else {
+    #       Get-ChildItem -Path $file_path -File -Recurse
+    #       $files_to_sign = @(Get-ChildItem -Path $file_path -File -Recurse)
+    #     }
+    #     foreach ( $f in $files_to_sign )
+    #     {
+    #       smctl sign --fingerprint ${{ env.SM_CODE_SIGNING_CERT_SHA1_HASH }} --input $f.FullName
+    #       smctl sign verify --input $f.FullName
+    #     }
+    #   if: runner.os == 'Windows' && inputs.keylocker-host
+    #   shell: powershell
+    # - name: Sign Linux with KeyLocker
+    #   run: |
+    #     curl -fSslL https://github.com/ebourg/jsign/releases/download/3.1/jsign_3.1_all.deb -o jsign_3.1_all.deb
+    #     sudo dpkg --install jsign_3.1_all.deb
+    #     file_path="${{ env.GITHUB_WORKSPACE }}/${{ inputs.file }}"
+    #     for f in $(find $file_path -type f); do
+    #       smctl sign -v --keypair-alias="${{ inputs.keylocker-keypair-alias }}" --config-file="/tmp/DigiCert One Signing Manager Tools/smtools-linux-x64/pkcs11properties.cfg" --fingerprint "${{ env.SM_CODE_SIGNING_CERT_SHA1_HASH }}" --input "$f"
+    #       smctl sign verify --input $f
+    #     done
+    #   if: runner.os == 'Linux' && inputs.keylocker-host
+    #   shell: bash
+    # - name: Sign
+    #   shell: powershell
+    #   if: runner.os == 'Windows' && !inputs.keylocker-host
+    #   env:
+    #     FILE: ${{ inputs.file }}
+    #     OPTIONS: ${{ inputs.options }}
+    #     WINDOZE_CERT_DATA: ${{ inputs.certificate-data }}
+    #     WINDOZE_CERT_PASSWORD: ${{ inputs.certificate-password }}
+    #   run: |
+    #     $ErrorActionPreference = "Stop"
 
-        # Get some things for cert opts
-        $file = -join($pwd, "/", $env:FILE);
-        $temp_dir = $env:TMP
-        $cert_data = $env:WINDOZE_CERT_DATA
-        $cert_path = "$temp_dir\lando.windoze.p12"
-        $cert_password = $env:WINDOZE_CERT_PASSWORD
-        $cert_secure_password = $null
-        $signtool = "${env:ProgramFiles(x86)}\Windows Kits\10\bin\x64\signtool.exe"
-        $signtool2022 = "${env:ProgramFiles(x86)}\Windows Kits\10\bin\10.0.17763.0\x86\signtool.exe"
+    #     # Get some things for cert opts
+    #     $file = -join($pwd, "/", $env:FILE);
+    #     $temp_dir = $env:TMP
+    #     $cert_data = $env:WINDOZE_CERT_DATA
+    #     $cert_path = "$temp_dir\lando.windoze.p12"
+    #     $cert_password = $env:WINDOZE_CERT_PASSWORD
+    #     $cert_secure_password = $null
+    #     $signtool = "${env:ProgramFiles(x86)}\Windows Kits\10\bin\x64\signtool.exe"
+    #     $signtool2022 = "${env:ProgramFiles(x86)}\Windows Kits\10\bin\10.0.17763.0\x86\signtool.exe"
 
-        # Throw error if file does not exist
-        if (!(Test-Path "$file"))
-        {
-          throw "$file does not exist"
-        }
+    #     # Throw error if file does not exist
+    #     if (!(Test-Path "$file"))
+    #     {
+    #       throw "$file does not exist"
+    #     }
 
-        # Decode and dump to temp file
-        If (!(Test-Path $cert_path)) {
-          Write-Output "Dumping cert to $cert_path..."
-          $bytes = [Convert]::FromBase64String($cert_data)
-          [IO.File]::WriteAllBytes($cert_path, $bytes)
-        }
+    #     # Decode and dump to temp file
+    #     If (!(Test-Path $cert_path)) {
+    #       Write-Output "Dumping cert to $cert_path..."
+    #       $bytes = [Convert]::FromBase64String($cert_data)
+    #       [IO.File]::WriteAllBytes($cert_path, $bytes)
+    #     }
 
-        # Use more recent signtool if we can
-        If (Test-Path $signtool2022) {
-          $signtool = "$signtool2022"
-        }
+    #     # Use more recent signtool if we can
+    #     If (Test-Path $signtool2022) {
+    #       $signtool = "$signtool2022"
+    #     }
 
-        # Verify the cert and password are good
-        Write-Output "Verifying cert is good to go..."
-        $cert_secure_password = ConvertTo-SecureString $cert_password -AsPlainText -Force
-        Import-PfxCertificate -FilePath "$cert_path" -Password $cert_secure_password -CertStoreLocation "Cert:\LocalMachine\My"
+    #     # Verify the cert and password are good
+    #     Write-Output "Verifying cert is good to go..."
+    #     $cert_secure_password = ConvertTo-SecureString $cert_password -AsPlainText -Force
+    #     Import-PfxCertificate -FilePath "$cert_path" -Password $cert_secure_password -CertStoreLocation "Cert:\LocalMachine\My"
 
-        # If we get this far we should be good!
-        Write-Output "We can sign!"
+    #     # If we get this far we should be good!
+    #     Write-Output "We can sign!"
 
-        # Sign and verify
-        Write-Output "Trying to sign $file with $signtool..."
-        & $signtool sign -f "$cert_path" -p "$cert_password" -fd sha256 -tr "http://timestamp.comodoca.com/?td=sha256" -td sha256 $env:OPTIONS -as -v "$file"
-        Write-Output "Verifying $file has been signed with the signtool..."
-        & $signtool verify -pa -v "$file"
+    #     # Sign and verify
+    #     Write-Output "Trying to sign $file with $signtool..."
+    #     & $signtool sign -f "$cert_path" -p "$cert_password" -fd sha256 -tr "http://timestamp.comodoca.com/?td=sha256" -td sha256 $env:OPTIONS -as -v "$file"
+    #     Write-Output "Verifying $file has been signed with the signtool..."
+    #     & $signtool verify -pa -v "$file"
 
-    - name: Notarize
-      if: runner.os == 'macOS' && inputs.apple-notary-user && inputs.apple-notary-password && inputs.apple-product-id
-      uses: lando/notarize-action@v2
-      with:
-        appstore-connect-username: ${{ inputs.apple-notary-user }}
-        appstore-connect-password: ${{ inputs.apple-notary-password }}
-        appstore-connect-team-id: ${{ inputs.apple-team-id }}
-        primary-bundle-id: ${{ inputs.apple-product-id }}
-        product-path: ${{ inputs.file }}
-        tool: ${{ inputs.apple-notary-tool }}
-        verbose: true
-    - name: Verify Notarization
-      if: runner.os == 'macOS' && inputs.apple-notary-user && inputs.apple-notary-password && inputs.apple-product-id
-      shell: bash
-      run: codesign -vvvv -R="notarized" --check-notarization ${{ inputs.file }}
+    # - name: Notarize
+    #   if: runner.os == 'macOS' && inputs.apple-notary-user && inputs.apple-notary-password && inputs.apple-product-id
+    #   uses: lando/notarize-action@v2
+    #   with:
+    #     appstore-connect-username: ${{ inputs.apple-notary-user }}
+    #     appstore-connect-password: ${{ inputs.apple-notary-password }}
+    #     appstore-connect-team-id: ${{ inputs.apple-team-id }}
+    #     primary-bundle-id: ${{ inputs.apple-product-id }}
+    #     product-path: ${{ inputs.file }}
+    #     tool: ${{ inputs.apple-notary-tool }}
+    #     verbose: true
+    # - name: Verify Notarization
+    #   if: runner.os == 'macOS' && inputs.apple-notary-user && inputs.apple-notary-password && inputs.apple-product-id
+    #   shell: bash
+    #   run: codesign -vvvv -R="notarized" --check-notarization ${{ inputs.file }}
 
-    - name: Set outputs
-      shell: bash
-      id: code-sign-action
-      run: |
-        echo "::group::Setting outputs"
-        echo "file=$(pwd)/${{ inputs.file }}" >> $GITHUB_OUTPUT
-        echo "::endgroup::"
+    # - name: Set outputs
+    #   shell: bash
+    #   id: code-sign-action
+    #   run: |
+    #     echo "::group::Setting outputs"
+    #     echo "file=$(pwd)/${{ inputs.file }}" >> $GITHUB_OUTPUT
+    #     echo "::endgroup::"
