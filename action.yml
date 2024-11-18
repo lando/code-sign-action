@@ -272,7 +272,7 @@ runs:
         security set-keychain-settings -t 3600 -u macos-build.keychain
 
         # Import certs to keychain
-        security import "$SIGNCERT" -k ~/Library/Keychains/macos-build.keychain -P ${{ inputs.certificate-password }} -T /usr/bin/codesign -T /usr/bin/productsign
+        security import "$SIGNCERT" -k ~/Library/Keychains/macos-build.keychain -P "${{ inputs.certificate-password }}" -T /usr/bin/codesign -T /usr/bin/productsign
 
         # Key signing
         security set-key-partition-list -S apple-tool:,apple: -s -k actions macos-build.keychain
