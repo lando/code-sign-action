@@ -40,16 +40,13 @@ jobs:
         run: npm run build
       - name: Trust test certs
         shell: bash
-        env:
-          CERT: ${{ secrets.DEFAULT_CERT_DATA }}
-          PASSWORD: ${{ secrets.DEFAULT_CERT_PASSWORD }}
         if: runner.os == 'Linux'
         run: |
           # dump
-          echo "$CERT" | base64 --decode | sudo install -D /dev/stdin /tmp/LandoCodeSigningTest.p12
+          echo "${{ secrets.DEFAULT_CERT_DATA }}" | base64 --decode | sudo install -D /dev/stdin /tmp/LandoCodeSigningTest.p12
 
           # extract
-          openssl pkcs12 -in /tmp/LandoCodeSigningTest.p12 -clcerts -nokeys -out /tmp/LandoCodeSigningTest.pem -password pass:$PASSWORD
+          openssl pkcs12 -in /tmp/LandoCodeSigningTest.p12 -clcerts -nokeys -out /tmp/LandoCodeSigningTest.pem -password pass:${{ secrets.DEFAULT_CERT_PASSWORD }}
 
           # trust
           sudo cp /tmp/LandoCodeSigningTest.pem /usr/local/share/ca-certificates/LandoCodeSigningTest.crt
