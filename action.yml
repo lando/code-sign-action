@@ -118,6 +118,7 @@ runs:
           # codesign
           elif [ "${{ runner.os }}" == "macOS" ]; then
             echo "signtool=codesign" >> $GITHUB_OUTPUT
+          fi
         fi
 
         # notarize logix
