@@ -124,7 +124,7 @@ runs:
 
         # notarize logix
         if [ "${{ runner.os }}" = "macOS" ] \
-          && [[ -n "${{ inputs.apple-notary-password: }}" ]] \
+          && [[ -n "${{ inputs.apple-notary-password }}" ]] \
           && [[ -n "${{ inputs.apple-notary-user }}" ]] \
           && [[ -n "${{ inputs.apple-product-id }}" ]]; then
           echo "notarize=true" >> $GITHUB_OUTPUT
@@ -187,7 +187,7 @@ runs:
 
     - name: Validate macos specific inputs
       shell: bash
-      if: runner.os == 'macOS'
+      if: steps.code-sign-action-internal.outputs.os == 'macos'
       run: |
         echo "::group::Ensure Apple Team ID is set"
         if [ "${{ inputs.apple-team-id }}" == "" ]; then
