@@ -231,20 +231,22 @@ runs:
     - name: Dump certs
       shell: bash
       if: steps.code-sign-action-internal.outputs.os == 'linux'
-      run: echo "${{ inputs.certificate-data }}" | base64 --decode | sudo install -D /dev/stdin > "${{ steps.code-sign-action-internal.outputs.signcert }}"
+      run: |
+        echo "Dumping cert to ${{ steps.code-sign-action-internal.outputs.signcert }}..."
+        echo "${{ inputs.certificate-data }}" | base64 --decode | sudo install -D /dev/stdin "${{ steps.code-sign-action-internal.outputs.signcert }}"
     - name: Dump certs
       shell: bash
       if: steps.code-sign-action-internal.outputs.os == 'macos'
-      run: echo "${{ inputs.certificate-data }}" | base64 --decode > "${{ steps.code-sign-action-internal.outputs.signcert }}"
+      run: |
+        echo "Dumping cert to ${{ steps.code-sign-action-internal.outputs.signcert }}..."
+        echo "${{ inputs.certificate-data }}" | base64 --decode > "${{ steps.code-sign-action-internal.outputs.signcert }}"
     - name: Dump certs
       shell: powershell
       if: steps.code-sign-action-internal.outputs.os == 'win'
       run: |
-        If (!(Test-Path "${{ steps.code-sign-action-internal.outputs.signcert }}")) {
-          Write-Output "Dumping cert to ${{ steps.code-sign-action-internal.outputs.signcert }}..."
-          $bytes = [Convert]::FromBase64String("${{ inputs.certificate-data }}")
-          [IO.File]::WriteAllBytes("${{ steps.code-sign-action-internal.outputs.signcert }}", $bytes)
-        }
+        Write-Output "Dumping cert to ${{ steps.code-sign-action-internal.outputs.signcert }}..."
+        $bytes = [Convert]::FromBase64String("${{ inputs.certificate-data }}")
+        [IO.File]::WriteAllBytes("${{ steps.code-sign-action-internal.outputs.signcert }}", $bytes)
 
     # - name: Sign on ${{ steps.code-sign-action-internal.outputs.os }} with ${{ steps.code-sign-action-internal.outputs.signtool }}
     #   shell: bash
