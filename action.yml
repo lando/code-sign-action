@@ -123,7 +123,7 @@ runs:
         fi
 
         # notarize logix
-        if [ "${{ runner.os }}" = "macOS" ] \
+        if [ "${{ runner.os }}" == "macOS" ] \
           && [[ -n "${{ inputs.apple-notary-password }}" ]] \
           && [[ -n "${{ inputs.apple-notary-user }}" ]] \
           && [[ -n "${{ inputs.apple-product-id }}" ]]; then
@@ -132,8 +132,8 @@ runs:
 
     - name: Set filey internal inputs
       shell: powershell
-      if: os.runner == 'Windows'
-      id: code-sign-action-files-internal
+      if: runner.os == 'Windows'
+      id: code-sign-action-win-internal
       run: |
         # sign cert
         $certpath = "$env:RUNNER_TEMP\signcert.p12"
@@ -148,8 +148,8 @@ runs:
 
     - name: Set filey internal inputs
       shell: bash
-      if: os.runner != 'Windows'
-      id: code-sign-action-files-internal
+      if: runner.os != 'Windows'
+      id: code-sign-action-posix-internal
       run: |
         # sign cert
         certpath="$RUNNER_TEMP/signcert.p12"
@@ -166,12 +166,19 @@ runs:
       shell: bash
       id: code-sign-action-internal
       run: |
-        # sign cert
-        echo "file=${{ steps.code-sign-action-files-internal.file }}" >> $GITHUB_OUTPUT
+        # generics
         echo "notarize=${{ steps.code-sign-action-generic-internal.notarize }}" >> $GITHUB_OUTPUT
         echo "os=${{ steps.code-sign-action-generic-internal.os }}" >> $GITHUB_OUTPUT
-        echo "signcert=${{ steps.code-sign-action-files-internal.signcert }}" >> $GITHUB_OUTPUT
         echo "signtool=${{ steps.code-sign-action-generic-internal.signtool }}" >> $GITHUB_OUTPUT
+
+        # osy
+        if [ "${{ runner.os }}" == "Windows" ]; then
+          echo "file=${{ steps.code-sign-action-win-internal.file }}" >> $GITHUB_OUTPUT
+          echo "signcert=${{ steps.code-sign-action-win-internal.signcert }}" >> $GITHUB_OUTPUT
+        else
+          echo "file=${{ steps.code-sign-action-posix-internal.file }}" >> $GITHUB_OUTPUT
+          echo "signcert=${{ steps.code-sign-action-posix-internal.signcert }}" >> $GITHUB_OUTPUT
+        fi
 
     - name: Verify Outputs
       shell: bash
@@ -183,7 +190,6 @@ runs:
         echo "signcert=${{ steps.code-sign-action-internal.outputs.signcert }}"
         echo "signtool=${{ steps.code-sign-action-internal.outputs.signtool }}"
         echo "::endgroup::"
-
 
     - name: Validate macos specific inputs
       shell: bash
