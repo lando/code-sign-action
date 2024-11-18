@@ -40,38 +40,47 @@ jobs:
         run: npm run build
       - name: Trust test certs
         shell: bash
+        env:
+          CERT: ${{ secrets.DEFAULT_CERT_DATA }}
+          PASSWORD: ${{ secrets.DEFAULT_CERT_PASSWORD }}
         if: runner.os == 'Linux'
         run: |
           # dump
-          echo "${{ secrets.DEFAULT_CERT_DATA }}" | base64 --decode | sudo install -D /dev/stdin /tmp/LandoCodeSigningTest.p12
+          echo "$CERT" | base64 --decode | sudo install -D /dev/stdin /tmp/LandoCodeSigningTest.p12
 
           # extract
-          openssl pkcs12 -in /tmp/LandoCodeSigningTest.p12 -clcerts -nokeys -out /tmp/LandoCodeSigningTest.pem -password pass:${{ inputs.DEFAULT_CERT_PASSWORD }}
+          openssl pkcs12 -in /tmp/LandoCodeSigningTest.p12 -clcerts -nokeys -out /tmp/LandoCodeSigningTest.pem -password pass:$PASSWORD
 
           # trust
           sudo cp /tmp/LandoCodeSigningTest.pem /usr/local/share/ca-certificates/LandoCodeSigningTest.crt
           sudo update-ca-certificates
       - name: Trust test certs
         shell: bash
+        env:
+          CERT: ${{ secrets.DEFAULT_CERT_DATA }}
+          PASSWORD: ${{ secrets.DEFAULT_CERT_PASSWORD }}
         if: runner.os == 'macOS'
         run: |
           # dump
-          echo "${{ secrets.DEFAULT_CERT_DATA }}" | base64 --decode > /tmp/LandoCodeSigningTest.p12
+          echo "$CERT" | base64 --decode > /tmp/LandoCodeSigningTest.p12
 
           # extract
-          openssl pkcs12 -in /tmp/LandoCodeSigningTest.p12 -clcerts -nokeys -out /tmp/LandoCodeSigningTest.pem -password pass:${{ inputs.DEFAULT_CERT_PASSWORD }}
+          openssl pkcs12 -in /tmp/LandoCodeSigningTest.p12 -clcerts -nokeys -out /tmp/LandoCodeSigningTest.pem -password pass:$PASSWORD
 
           # trust
           sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain /tmp/LandoCodeSigningTest.pem
       - name: Trust test certs
         shell: powershell
+        env:
+          CERT: ${{ secrets.DEFAULT_CERT_DATA }}
+          PASSWORD: ${{ secrets.DEFAULT_CERT_PASSWORD }}
         if: runner.os == 'Windows'
         run: |
           # vars
-          $temp_dir = $env:TMP
-          $cert_data = "${{ secrets.DEFAULT_CERT_DATA }}"
+          $temp_dir = "$env:TMP"
+          $cert_data = "$env:CERT"
           $cert_path = "$temp_dir\LandoCodeSigningTest.p12"
-          $cert_password = "${{ secrets.DEFAULT_CERT_PASSWORD }}"
+          $cert_password = "$env:PASSWORD"
           $cert_secure_password = ConvertTo-SecureString -String $cert_password -Force -AsPlainText
           $cert_store  = "Cert:\LocalMachine\Root"
 
