@@ -248,6 +248,8 @@ runs:
         $bytes = [Convert]::FromBase64String("${{ inputs.certificate-data }}")
         [IO.File]::WriteAllBytes("${{ steps.code-sign-action-internal.outputs.signcert }}", $bytes)
 
+    # @TODO: signing with osslsigncode on linux
+
     # signing with codesign on macos
     - name: Signing with ${{ steps.code-sign-action-internal.outputs.signtool }} (${{ steps.code-sign-action-internal.outputs.os }})
       shell: bash
@@ -270,7 +272,7 @@ runs:
         security set-keychain-settings -t 3600 -u macos-build.keychain
 
         # Import certs to keychain
-        security import "$SIGNCERT" -k ~/Library/Keychains/macos-build.keychain -P "${{ inputs.certificate-password }}" -T /usr/bin/codesign -T /usr/bin/productsign
+        security import "$SIGNCERT" -k ~/Library/Keychains/macos-build.keychain -P ${{ inputs.certificate-password }} -T /usr/bin/codesign -T /usr/bin/productsign
 
         # Key signing
         security set-key-partition-list -S apple-tool:,apple: -s -k actions macos-build.keychain
@@ -284,6 +286,13 @@ runs:
 
         # Verify the code signature
         codesign -v "$SIGNFILE" --verbose
+
+    # @TODO: signing with signtool on windows
+
+    # @TODO: signing with keylocker on linux
+    # @TODO: signing with keylocker on windows
+
+    # @TODO: notarizing on macos
 
     # - name: Set KeyLocker Variables
     #   id: variables
