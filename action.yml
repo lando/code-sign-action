@@ -98,7 +98,7 @@ runs:
         fi
 
         # signtool discovery if needed
-        if [ "${{ inputs.signtool }}" == "auto" }}" ]; then
+        if [ "${{ inputs.signtool }}" == "auto" }} ]; then
           # keylocker
           if [ "${{ runner.os }}" != "macOS" ] \
             && [[ -n "${{ inputs.keylocker-api-key }}" ]] \
