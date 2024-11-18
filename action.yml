@@ -190,16 +190,45 @@ runs:
         echo "signtool=${{ steps.code-sign-action-internal.outputs.signtool }}"
         echo "::endgroup::"
 
+    - name: Validate linux specific inputs
+      shell: bash
+      if: steps.code-sign-action-internal.outputs.os == 'linux'
+      run: |
+        # supported codesigner
+        if [ "${{ steps.code-sign-action-internal.outputs.signtool }}" != "osslsigncode" ]
+          || [ "${{ steps.code-sign-action-internal.outputs.signtool }}" != "keylocker" ] \
+          || [ "${{ steps.code-sign-action-internal.outputs.signtool }}" != "smctl" ]; then
+          echo "::error title=${{ steps.code-sign-action-internal.outputs.signtool }} is unsupported on ${{ runner.os }}!::You must specify osslsigncode, keylocker or smctl as your signtool!"
+          exit 1
+        fi
+
     - name: Validate macos specific inputs
       shell: bash
       if: steps.code-sign-action-internal.outputs.os == 'macos'
       run: |
-        echo "::group::Ensure Apple Team ID is set"
-        if [ "${{ inputs.apple-team-id }}" == "" ]; then
-          echo "::error title=File is not set!::You must specify a file to sign!"
+        # supported codesigner
+        if [ "${{ steps.code-sign-action-internal.outputs.signtool }}" != "codesign" ]; then
+          echo "::error title=${{ steps.code-sign-action-internal.outputs.signtool }} is unsupported on ${{ runner.os }}!::You must specify codesign as your signtool!"
           exit 1
         fi
-        echo "::endgroup::"
+
+        # team id
+        if [ "${{ inputs.apple-team-id }}" == "" ]; then
+          echo "::error title=apple-team-id is not set!::You must specify an apple-team-id to sign!"
+          exit 1
+        fi
+
+    - name: Validate windows specific inputs
+      shell: bash
+      if: steps.code-sign-action-internal.outputs.os == 'win'
+      run: |
+        # supported codesigner
+        if [ "${{ steps.code-sign-action-internal.outputs.signtool }}" != "signtool" ]
+          || [ "${{ steps.code-sign-action-internal.outputs.signtool }}" != "keylocker" ] \
+          || [ "${{ steps.code-sign-action-internal.outputs.signtool }}" != "smctl" ]; then
+          echo "::error title=${{ steps.code-sign-action-internal.outputs.signtool }} is unsupported on ${{ runner.os }}!::You must specify signtool, keylocker or smctl as your signtool!"
+          exit 1
+        fi
 
     # - name: Sign
     #   shell: bash
