@@ -275,7 +275,9 @@ runs:
         security import "$SIGNCERT" -k ~/Library/Keychains/macos-build.keychain -P "${{ inputs.certificate-password }}" -T /usr/bin/codesign -T /usr/bin/productsign
 
         # Key signing
+        echo "hi"
         security set-key-partition-list -S apple-tool:,apple: -s -k actions macos-build.keychain
+        echo "hello"
 
         # Verify keychain things
         security find-identity -v macos-build.keychain | grep "${{ inputs.apple-team-id }}" | grep "Developer ID Application"
