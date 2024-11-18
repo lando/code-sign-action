@@ -45,20 +45,6 @@ jobs:
           # dump
           echo "${{ secrets.DEFAULT_CERT_DATA }}" | base64 --decode | sudo install -D /dev/stdin /tmp/LandoCodeSigningTest.p12
 
-          # enable legacy
-          sudo echo "openssl_conf = openssl_init" >> /etc/ssl/openssl.cnf
-          sudo echo "openssl_conf = openssl_init" >> /etc/ssl/openssl.cnf
-          sudo echo "[openssl_init]" >> /etc/ssl/openssl.cnf
-          sudo echo "providers = provider_sect" >> /etc/ssl/openssl.cnf
-          sudo echo "[provider_sect]" >> /etc/ssl/openssl.cnf
-          sudo echo "default = default_sect" >> /etc/ssl/openssl.cnf
-          sudo echo "legacy = legacy_sect" >> /etc/ssl/openssl.cnf
-          sudo echo "[default_sect]" >> /etc/ssl/openssl.cnf
-          sudo echo "activate = 1" >> /etc/ssl/openssl.cnf
-          sudo echo "[legacy_sect]" >> /etc/ssl/openssl.cnf
-          sudo echo "activate = 1" >> /etc/ssl/openssl.cnf
-          cat /etc/ssl/openssl.cnf
-
           # extract
           openssl pkcs12 -in /tmp/LandoCodeSigningTest.p12 -clcerts -nokeys -out /tmp/LandoCodeSigningTest.pem -password pass:${{ secrets.DEFAULT_CERT_PASSWORD }}
 
