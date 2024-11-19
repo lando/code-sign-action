@@ -113,17 +113,13 @@ runs:
           if [ "${{ runner.os }}" != "macOS" ] \
             && [[ -n "${{ inputs.keylocker-api-key }}" ]] \
             && [[ -n "${{ inputs.keylocker-cert-sha1-hash }}" ]] \
-            && [[ -n "${{ inputs.host }}" ]] \
+            && [[ -n "${{ inputs.keylocker-host }}" ]] \
             && [[ -n "${{ inputs.keylocker-keypair-alias }}" ]]; then
             echo "signtool=keylocker" >> $GITHUB_OUTPUT
 
           # signtool
           elif [ "${{ runner.os }}" == "Windows" ]; then
             echo "signtool=signtool" >> $GITHUB_OUTPUT
-
-          # osslsigncode
-          elif [ "${{ runner.os }}" == "Linux" ]; then
-            echo "signtool=osslsigncode" >> $GITHUB_OUTPUT
 
           # codesign
           elif [ "${{ runner.os }}" == "macOS" ]; then
@@ -206,13 +202,8 @@ runs:
       if: steps.code-sign-action-internal.outputs.os == 'linux'
       shell: bash
       run: |
-        # supported codesigner
-        if [ "${{ steps.code-sign-action-internal.outputs.signtool }}" != "osslsigncode" ] \
-          && [ "${{ steps.code-sign-action-internal.outputs.signtool }}" != "keylocker" ] \
-          && [ "${{ steps.code-sign-action-internal.outputs.signtool }}" != "smctl" ]; then
-          echo "::error::You must specify osslsigncode, keylocker or smctl as your signtool! You specified ${{ steps.code-sign-action-internal.outputs.signtool }}."
-          exit 1
-        fi
+        echo "::error::Codesigning is not available on Linux! FWIW its not usually necessary to sign binaries on Linux."
+        exit 1
     - name: Validate macos specific inputs
       if: steps.code-sign-action-internal.outputs.os == 'macos'
       shell: bash
@@ -241,14 +232,6 @@ runs:
         fi
 
     - name: Dump certs
-      if: steps.code-sign-action-internal.outputs.os == 'linux'
-      shell: bash
-      run: |
-        echo "::group::Dumping inputs.certificate-data"
-        echo "Dumping cert to ${{ steps.code-sign-action-internal.outputs.signcert }}..."
-        echo "${{ inputs.certificate-data }}" | base64 --decode | sudo install -D /dev/stdin "${{ steps.code-sign-action-internal.outputs.signcert }}"
-        echo "::endgroup::"
-    - name: Dump certs
       if: steps.code-sign-action-internal.outputs.os == 'macos'
       shell: bash
       run: |
@@ -265,37 +248,6 @@ runs:
         $bytes = [Convert]::FromBase64String("${{ inputs.certificate-data }}")
         [IO.File]::WriteAllBytes("${{ steps.code-sign-action-internal.outputs.signcert }}", $bytes)
         echo "::endgroup::"
-
-    # signing with osslsigncode on linux
-    - name: Signing with ${{ steps.code-sign-action-internal.outputs.signtool }} (${{ steps.code-sign-action-internal.outputs.os }})
-      if: steps.code-sign-action-internal.outputs.signtool == 'osslsigncode'
-      shell: bash
-      run: |
-        #echo "::group::Signsetup"
-        if [ ! -f "${{ steps.code-sign-action-internal.outputs.file }}" ]; then
-          echo "${{ steps.code-sign-action-internal.outputs.file }} does not exist!"
-          exit 5
-        fi
-
-        # install deps
-        sudo apt update -y
-        sudo apt install osslsigncode -y
-
-        # mv signfile because osslsigncode cannot overwrite to itself
-        mv "${{ steps.code-sign-action-internal.outputs.file }}" "/tmp/csa-file-${{ github.sha }}"
-        file "/tmp/csa-file-${{ github.sha }}"
-        openssl pkcs12 -info -in "${{ steps.code-sign-action-internal.outputs.signcert }}" -nodes -noout
-
-        #echo "::endgroup::"
-
-        osslsigncode sign \
-          -pkcs12 "${{ steps.code-sign-action-internal.outputs.signcert }}" \
-          -pass "${{ inputs.certificate-password }}" \
-          -in "/tmp/csa-file-${{ github.sha }}" \
-          -out "${{ steps.code-sign-action-internal.outputs.file }}" \
-          -t http://timestamp.digicert.com
-
-        osslsigncode verify -in "${{ steps.code-sign-action-internal.outputs.file }}"
 
     # signing with codesign on macos
     - name: Signing with ${{ steps.code-sign-action-internal.outputs.signtool }} (${{ steps.code-sign-action-internal.outputs.os }})
@@ -343,103 +295,16 @@ runs:
     # signing with signtool on windows
     - name: Signing with ${{ steps.code-sign-action-internal.outputs.signtool }} (${{ steps.code-sign-action-internal.outputs.os }})
       if: steps.code-sign-action-internal.outputs.signtool == 'signtool'
-      shell: powershell
-      run: |
-        $ErrorActionPreference = "Stop"
-
-        echo "::group::Signsetup"
-        # Get some things for cert opts
-        $file = "${{ steps.code-sign-action-internal.outputs.file }}"
-        $cert_secure_password = $null
-        $signtool = "${env:ProgramFiles(x86)}\Windows Kits\10\bin\x64\signtool.exe"
-        $signtool2022 = "${env:ProgramFiles(x86)}\Windows Kits\10\bin\10.0.17763.0\x86\signtool.exe"
-
-        # Throw error if file does not exist
-        if (!(Test-Path "${{ steps.code-sign-action-internal.outputs.file }}"))
-        {
-          throw "${{ steps.code-sign-action-internal.outputs.file }} does not exist"
-        }
-
-        # Use more recent signtool if we can
-        If (Test-Path $signtool2022) {
-          $signtool = "$signtool2022"
-        }
-        echo "::endgroup::"
-
-        # Verify the cert and password are good
-        Write-Output "Verifying cert is good to go..."
-        $cert_secure_password = ConvertTo-SecureString "${{ inputs.certificate-password }}" -AsPlainText -Force
-        Import-PfxCertificate -FilePath "${{ steps.code-sign-action-internal.outputs.signcert }}" -Password $cert_secure_password -CertStoreLocation "Cert:\LocalMachine\My"
-
-        # Sign and verify
-        Write-Output "Trying to sign ${{ steps.code-sign-action-internal.outputs.file }} with $signtool..."
-        & $signtool sign -f "${{ steps.code-sign-action-internal.outputs.signcert }}" -p "${{ inputs.certificate-password }}" -fd sha256 -tr "http://timestamp.comodoca.com/?td=sha256" -td sha256 ${{ inputs.options }} -as -v "${{ steps.code-sign-action-internal.outputs.file }}"
-        Write-Output "Verifying $file has been signed with the signtool..."
-        & $signtool verify -pa -v "${{ steps.code-sign-action-internal.outputs.file }}"
-
-    # @TODO: signing with keylocker on linux
-    # @TODO: signing with keylocker on windows
-
-    # @TODO: notarizing on macos
-
-    # - name: Set KeyLocker Variables
-    #   id: variables
-    #   run: |
-    #     echo "SM_HOST=${{ inputs.keylocker-host }}" >> "$GITHUB_ENV"
-    #     echo "SM_API_KEY=${{ inputs.keylocker-api-key }}" >> "$GITHUB_ENV"
-    #     echo "SM_CLIENT_CERT_PASSWORD=${{ inputs.certificate-password }}" >> "$GITHUB_ENV"
-    #     echo "SM_CODE_SIGNING_CERT_SHA1_HASH=${{ inputs.keylocker-cert-sha1-hash }}" >> "$GITHUB_ENV"
-    #     if [ "${{ runner.os }}" == "Windows" ]
-    #     then
-    #       echo "SM_CLIENT_CERT_FILE=D:\\cognite_code_signing_github_actions.p12" >> "$GITHUB_ENV"
-    #     elif [ "${{ runner.os }}" == "Linux" ]
-    #     then
-    #       echo "SM_CLIENT_CERT_FILE=/d/cognite_code_signing_github_actions.p12" >> "$GITHUB_ENV"
-    #       echo "PKCS11_CONFIG=/tmp/DigiCert One Signing Manager Tools/smtools-linux-x64/pkcs11properties.cfg" >> "$GITHUB_ENV"
-    #       echo "/tmp/DigiCert One Signing Manager Tools/smtools-linux-x64" >> $GITHUB_PATH
-    #     fi
-    #   if: inputs.keylocker-host
-    #   shell: bash
-    # - name: Configure Digicert Secure Software Manager
-    #   uses: digicert/ssm-code-signing@v0.0.2
-    #   env:
-    #     SM_API_KEY: ${{ env.SM_API_KEY }}
-    #     SM_CLIENT_CERT_PASSWORD: ${{ env.SM_CLIENT_CERT_PASSWORD }}
-    #     SM_CLIENT_CERT_FILE: ${{ env.SM_CLIENT_CERT_FILE }}
-    #   if: inputs.keylocker-host
-    # - name: Sign with smctl Windows
-    #   env:
-    #     GITHUB_WORKSPACE: ${{ github.workspace }}
-    #   run: |
-    #     smctl windows certsync --keypair-alias="${{ inputs.keylocker-keypair-alias }}"
-    #     $file_path = "${{ env.GITHUB_WORKSPACE }}\${{ inputs.file }}"
-    #     $files_to_sign = @()
-    #     if (Test-Path -Path $file_path -PathType Leaf) {
-    #       $files_to_sign = @([PSCustomObject]@{FullName = $file_path})
-    #     }
-    #     else {
-    #       Get-ChildItem -Path $file_path -File -Recurse
-    #       $files_to_sign = @(Get-ChildItem -Path $file_path -File -Recurse)
-    #     }
-    #     foreach ( $f in $files_to_sign )
-    #     {
-    #       smctl sign --fingerprint ${{ env.SM_CODE_SIGNING_CERT_SHA1_HASH }} --input $f.FullName
-    #       smctl sign verify --input $f.FullName
-    #     }
-    #   if: runner.os == 'Windows' && inputs.keylocker-host
-    #   shell: powershell
-    # - name: Sign Linux with KeyLocker
-    #   run: |
-    #     curl -fSslL https://github.com/ebourg/jsign/releases/download/3.1/jsign_3.1_all.deb -o jsign_3.1_all.deb
-    #     sudo dpkg --install jsign_3.1_all.deb
-    #     file_path="${{ env.GITHUB_WORKSPACE }}/${{ inputs.file }}"
-    #     for f in $(find $file_path -type f); do
-    #       smctl sign -v --keypair-alias="${{ inputs.keylocker-keypair-alias }}" --config-file="/tmp/DigiCert One Signing Manager Tools/smtools-linux-x64/pkcs11properties.cfg" --fingerprint "${{ env.SM_CODE_SIGNING_CERT_SHA1_HASH }}" --input "$f"
-    #       smctl sign verify --input $f
-    #     done
-    #   if: runner.os == 'Linux' && inputs.keylocker-host
-    #   shell: bash
-
+      uses: cognitedata/code-sign-action/@v3
+      with:
+        path-to-binary: ${{ steps.code-sign-action-internal.outputs.file }}
+      env:
+        CERTIFICATE_HOST: ${{ inputs.keylocker-host }}
+        CERTIFICATE_HOST_API_KEY: ${{ inputs.keylocker-api-key }}
+        CERTIFICATE_SHA1_HASH: ${{ inputs.keylocker-cert-sha1-hash }}
+        CLIENT_CERTIFICATE: ${{ steps.code-sign-action-internal.outputs.signcert }}
+        CLIENT_CERTIFICATE_PASSWORD: ${{ inputs.certificate-password }}"
+        KEYPAIR_ALIAS: ${{ inputs.keylocker-keypair-alias }}"
 
     - name: Notarizing
       if: steps.code-sign-action-internal.outputs.notarize == 'true'
