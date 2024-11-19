@@ -92,7 +92,7 @@ jobs:
         with:
           file: ${{ matrix.file }}
           certificate-data: ${{ secrets.DEFAULT_CERT_DATA }}
-          certificate-id: LSL337X5
+          certificate-id: LSL337X6
           certificate-password: ${{ secrets.DEFAULT_CERT_PASSWORD }}
       - name: Test output
         shell: bash
