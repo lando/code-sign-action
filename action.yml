@@ -435,7 +435,7 @@ runs:
       with:
         appstore-connect-username: ${{ inputs.apple-notary-user }}
         appstore-connect-password: ${{ inputs.apple-notary-password }}
-        appstore-connect-team-id: ${{ steps.code-sign-action-internal.outputs.certid }}
+        appstore-connect-team-id: ${{ steps.code-sign-action-internal.outputs.signid }}
         primary-bundle-id: ${{ inputs.apple-product-id }}
         product-path: ${{ steps.code-sign-action-internal.outputs.file }}
         tool: ${{ inputs.apple-notary-tool }}
