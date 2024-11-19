@@ -36,8 +36,8 @@ jobs:
         shell: bash
         run: npm run build
       - name: Trust test certs
-        shell: bash
         if: runner.os == 'macOS'
+        shell: bash
         run: |
           # dump
           echo "${{ secrets.DEFAULT_CERT_DATA }}" | base64 --decode > /tmp/LandoCodeSigningTest.p12
@@ -50,8 +50,8 @@ jobs:
           sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain /tmp/LandoCodeSigningTest.pem
           sudo security find-certificate -a -c "Lando System Code Signing Test Certificate" -p /Library/Keychains/System.keychain
       - name: Trust test certs
-        shell: powershell
         if: runner.os == 'Windows'
+        shell: powershell
         run: |
           # vars
           $temp_dir = "$env:TMP"
@@ -71,8 +71,8 @@ jobs:
           # trust
           Import-PfxCertificate -FilePath $cert_path -CertStoreLocation $cert_store -Password $cert_secure_password
       - name: Codesign
-        uses: ./
         id: code-sign-action
+        uses: ./
         with:
           file: ${{ matrix.file }}
           certificate-data: ${{ secrets.DEFAULT_CERT_DATA }}
@@ -110,8 +110,8 @@ jobs:
         shell: bash
         run: npm run build
       - name: Codesign
-        uses: ./
         id: code-sign-action
+        uses: ./
         with:
           file: dist/@lando/code-sign-action.exe
           certificate-data: ${{ secrets.KEYLOCKER_CLIENT_CERT }}
@@ -155,6 +155,7 @@ jobs:
         shell: bash
         run: npm run build
       - name: Codesign
+        id: code-sign-action
         uses: ./
         with:
           file: dist/@lando/code-sign-action

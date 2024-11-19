@@ -1,3 +1,5 @@
+## {{ UNRELEASED_VERSION }} - [{{ UNRELEASED_DATE }}]({{ UNRELEASED_LINK }})
+
 ## v2.2.0 - [May 3, 2024](https://github.com/lando/code-sign-action/releases/tag/v2.2.0)
 
 * Added support for using DigiCert KeyLocker to sign Windows and Linux packages. [#7](https://github.com/lando/code-sign-action/pull/7)
