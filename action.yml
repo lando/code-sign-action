@@ -32,6 +32,9 @@ inputs:
   apple-team-id:
     description: "The Apple Developer account Team ID"
     required: false
+  certificate-id:
+    description: "A string to identify the correct signing cert"
+    required: true
   keylocker-api-key:
     description: "The API key to use for KeyLocker"
     required: false
@@ -95,6 +98,13 @@ runs:
           echo "os=macos" >> $GITHUB_OUTPUT
         elif [ "${{ runner.os }}" == "Windows" ]; then
           echo "os=win" >> $GITHUB_OUTPUT
+        fi
+
+        # cert id
+        if [ "${{ runner.os }}" == "macOS" ] && [[ -n "${{ inputs.apple-team-id }}" ]]; then
+          echo "signid=${{ inputs.apple-team-id }}" >> $GITHUB_OUTPUT
+        else
+          echo "signid=${{ inputs.certificate-id }}" >> $GITHUB_OUTPUT
         fi
 
         # signtool discovery if needed
@@ -168,6 +178,7 @@ runs:
         # generics
         echo "notarize=${{ steps.code-sign-action-generic-internal.outputs.notarize }}" >> $GITHUB_OUTPUT
         echo "os=${{ steps.code-sign-action-generic-internal.outputs.os }}" >> $GITHUB_OUTPUT
+        echo "signid=${{ steps.code-sign-action-generic-internal.outputs.signid }}" >> $GITHUB_OUTPUT
         echo "signtool=${{ steps.code-sign-action-generic-internal.outputs.signtool }}" >> $GITHUB_OUTPUT
 
         # osy
@@ -187,6 +198,7 @@ runs:
         echo "notarize=${{ steps.code-sign-action-internal.outputs.notarize }}"
         echo "os=${{ steps.code-sign-action-internal.outputs.os }}"
         echo "signcert=${{ steps.code-sign-action-internal.outputs.signcert }}"
+        echo "signid=${{ steps.code-sign-action-internal.outputs.signid }}"
         echo "signtool=${{ steps.code-sign-action-internal.outputs.signtool }}"
         echo "::endgroup::"
 
@@ -212,8 +224,8 @@ runs:
         fi
 
         # team id
-        if [ "${{ inputs.apple-team-id }}" == "" ]; then
-          echo "::error title=apple-team-id is not set!::You must specify an apple-team-id to sign!"
+        if [ "${{ steps.code-sign-action-internal.outputs.signid }}" == "" ]; then
+          echo "::error::You must specify a certificate-id or apple-team-id to sign!"
           exit 1
         fi
     - name: Validate windows specific inputs
@@ -291,7 +303,7 @@ runs:
         security find-identity -v macos-build.keychain
 
         # Force the codesignature
-        codesign --force ${{ inputs.options }} -s "${{ inputs.apple-team-id }}" "${{ steps.code-sign-action-internal.outputs.file }}"
+        codesign --force ${{ inputs.options }} -s "${{ steps.code-sign-action-internal.outputs.signid }}" "${{ steps.code-sign-action-internal.outputs.file }}"
 
         # Verify the code signature
         codesign -v "${{ steps.code-sign-action-internal.outputs.file }}" --verbose
