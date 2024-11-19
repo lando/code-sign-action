@@ -186,7 +186,7 @@ runs:
         }
 
         $relativePath = Get-RelativePath -FromPath "$env:GITHUB_WORKSPACE" -ToPath "$file"
-        Write-Host "from: $env:GITHUB_WORKSPACE, to: $file, is: $relativePath"
+        Write-Output "ghwrfile=$relativePath" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
 
     - name: Set osy internal inputs
       if: runner.os != 'Windows'
@@ -217,6 +217,7 @@ runs:
         # osy
         if [ "${{ runner.os }}" == "Windows" ]; then
           echo "file=${{ steps.code-sign-action-win-internal.outputs.file }}" >> $GITHUB_OUTPUT
+          echo "ghwrfile=${{ steps.code-sign-action-win-internal.outputs.ghwrfile }}" >> $GITHUB_OUTPUT
           echo "signcert=${{ steps.code-sign-action-win-internal.outputs.signcert }}" >> $GITHUB_OUTPUT
         else
           echo "file=${{ steps.code-sign-action-posix-internal.outputs.file }}" >> $GITHUB_OUTPUT
@@ -228,6 +229,7 @@ runs:
       run: |
         echo "::group::Internal output information"
         echo "file=${{ steps.code-sign-action-internal.outputs.file }}"
+        echo "ghwrfile=${{ steps.code-sign-action-internal.outputs.ghwrfile }}"
         echo "notarize=${{ steps.code-sign-action-internal.outputs.notarize }}"
         echo "os=${{ steps.code-sign-action-internal.outputs.os }}"
         echo "signcert=${{ steps.code-sign-action-internal.outputs.signcert }}"
@@ -370,7 +372,7 @@ runs:
       if: steps.code-sign-action-internal.outputs.signtool == 'keylocker' || steps.code-sign-action-internal.outputs.signtool == 'smctl'
       uses: cognitedata/code-sign-action/@v3
       with:
-        path-to-binary: ${{ steps.code-sign-action-internal.outputs.file }}
+        path-to-binary: ${{ steps.code-sign-action-internal.outputs.ghwrfile }}
       env:
         CERTIFICATE_HOST: ${{ inputs.keylocker-host }}
         CERTIFICATE_HOST_API_KEY: ${{ inputs.keylocker-api-key }}
