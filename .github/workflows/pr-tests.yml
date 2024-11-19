@@ -16,13 +16,13 @@ jobs:
             file: dist/@lando/code-sign-action
             node-version: '20'
           - os: macos-14
-            file: ${{ github.workspace }}/dist/@lando/code-sign-action
+            file: /Users/runner/work/code-sign-action/code-sign-action/dist/@lando/code-sign-action
             node-version: '20'
           - os: windows-2022
             file: dist\@lando\code-sign-action.exe
             node-version: '20'
           - os: windows-2022
-            file: ${{ github.workspace }}\dist\@lando\code-sign-action.exe
+            file: D:\a\code-sign-action\code-sign-action/dist\@lando\code-sign-action.exe
             node-version: '20'
 
     steps:
