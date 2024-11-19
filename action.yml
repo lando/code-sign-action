@@ -88,8 +88,8 @@ runs:
         echo "::endgroup::"
 
     - name: Set generic internal inputs
-      shell: bash
       id: code-sign-action-generic-internal
+      shell: bash
       run: |
         # standardize os stuff
         if [ "${{ runner.os }}" == "Linux" ]; then
@@ -140,9 +140,9 @@ runs:
         fi
 
     - name: Set osy internal inputs
-      shell: powershell
       if: runner.os == 'Windows'
       id: code-sign-action-win-internal
+      shell: powershell
       run: |
         # sign cert
         $certpath = "$env:RUNNER_TEMP\signcert.p12"
@@ -156,9 +156,9 @@ runs:
         }
 
     - name: Set osy internal inputs
-      shell: bash
       if: runner.os != 'Windows'
       id: code-sign-action-posix-internal
+      shell: bash
       run: |
         # sign cert
         certpath="$RUNNER_TEMP/signcert.p12"
@@ -172,8 +172,8 @@ runs:
         fi
 
     - name: Set internal inputs
-      shell: bash
       id: code-sign-action-internal
+      shell: bash
       run: |
         # generics
         echo "notarize=${{ steps.code-sign-action-generic-internal.outputs.notarize }}" >> $GITHUB_OUTPUT
@@ -203,8 +203,8 @@ runs:
         echo "::endgroup::"
 
     - name: Validate linux specific inputs
-      shell: bash
       if: steps.code-sign-action-internal.outputs.os == 'linux'
+      shell: bash
       run: |
         # supported codesigner
         if [ "${{ steps.code-sign-action-internal.outputs.signtool }}" != "osslsigncode" ] \
@@ -214,8 +214,8 @@ runs:
           exit 1
         fi
     - name: Validate macos specific inputs
-      shell: bash
       if: steps.code-sign-action-internal.outputs.os == 'macos'
+      shell: bash
       run: |
         # supported codesigner
         if [ "${{ steps.code-sign-action-internal.outputs.signtool }}" != "codesign" ]; then
@@ -229,8 +229,8 @@ runs:
           exit 1
         fi
     - name: Validate windows specific inputs
-      shell: bash
       if: steps.code-sign-action-internal.outputs.os == 'win'
+      shell: bash
       run: |
         # supported codesigner
         if [ "${{ steps.code-sign-action-internal.outputs.signtool }}" != "signtool" ] \
@@ -242,6 +242,7 @@ runs:
 
     - name: Dump certs
       if: steps.code-sign-action-internal.outputs.os == 'linux'
+      shell: bash
       run: |
         echo "::group::Dumping inputs.certificate-data"
         echo "Dumping cert to ${{ steps.code-sign-action-internal.outputs.signcert }}..."
@@ -249,14 +250,15 @@ runs:
         echo "::endgroup::"
     - name: Dump certs
       if: steps.code-sign-action-internal.outputs.os == 'macos'
+      shell: bash
       run: |
         echo "::group::Dumping inputs.certificate-data"
         echo "Dumping cert to ${{ steps.code-sign-action-internal.outputs.signcert }}..."
         echo "${{ inputs.certificate-data }}" | base64 --decode > "${{ steps.code-sign-action-internal.outputs.signcert }}"
         echo "::endgroup::"
     - name: Dump certs
-      shell: powershell
       if: steps.code-sign-action-internal.outputs.os == 'win'
+      shell: powershell
       run: |
         echo "::group::Dumping inputs.certificate-data"
         Write-Output "Dumping cert to ${{ steps.code-sign-action-internal.outputs.signcert }}..."
@@ -269,6 +271,7 @@ runs:
     # signing with codesign on macos
     - name: Signing with ${{ steps.code-sign-action-internal.outputs.signtool }} (${{ steps.code-sign-action-internal.outputs.os }})
       if: steps.code-sign-action-internal.outputs.signtool == 'codesign'
+      shell: bash
       run: |
         echo "::group::Signsetup"
         # Throw error if file does not exist
@@ -439,10 +442,11 @@ runs:
         verbose: true
     - name: Verifying Notarization
       if: steps.code-sign-action-internal.outputs.notarize == 'true'
+      shell: bash
       run: codesign -vvvv -R="notarized" --check-notarization "${{ steps.code-sign-action-internal.outputs.file }}"
     - name: Set outputs
-      shell: bash
       id: code-sign-action
+      shell: bash
       run: |
         echo "::group::Setting outputs"
         echo "file=${{ steps.code-sign-action-internal.outputs.file }}" >> $GITHUB_OUTPUT
