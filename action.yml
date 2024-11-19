@@ -280,29 +280,23 @@ runs:
           exit 5
         fi
 
+        function import_cert() {
+          security import "$1" -k "~/Library/Keychains/macos-build.keychain" -P "$2" -T /usr/bin/codesign -T /usr/bin/productsign
+        }
+
         # Create keychain
         security create-keychain -p actions macos-build.keychain
         security default-keychain -s macos-build.keychain
         security unlock-keychain -p actions macos-build.keychain
         security set-keychain-settings -t 3600 -u macos-build.keychain
 
-        # attempt to import p12 directly
-        # security import "${{ steps.code-sign-action-internal.outputs.signcert }}" -k ~/Library/Keychains/login.keychain -P "${{ inputs.certificate-password }}" -T /usr/bin/codesign -T /usr/bin/productsign || {
-        #   echo "$?"
-        #   # fallback to extract and import
-        #   # NOTE: we do this because security import cannot handle decrypting newer p12 algos
-        #   if [[ $? -eq 1 ]]; then
-        #     openssl pkcs12 -in "${{ steps.code-sign-action-internal.outputs.signcert }}" -nocerts -out "$RUNNER_TEMP/codesign.key" -nodes -password pass:"${{ inputs.certificate-password }}"
-        #     openssl pkcs12 -in "${{ steps.code-sign-action-internal.outputs.signcert }}" -clcerts -nokeys -out "$RUNNER_TEMP/codesign.crt" -password pass:"${{ inputs.certificate-password }}"
-        #     security import "$RUNNER_TEMP/codesign.key" -k ~/Library/Keychains/macos-build.keychain -P "" -T /usr/bin/codesign -T /usr/bin/productsign
-        #     security import "$RUNNER_TEMP/codesign.crt" -k ~/Library/Keychains/macos-build.keychain -P "" -T /usr/bin/codesign -T /usr/bin/productsign
-        #   else
-        #     echo "Failed to import certificate. Exiting."
-        #     exit 1
-        #   fi
-        # }
-
-        security import "${{ steps.code-sign-action-internal.outputs.signcert }}" -k ~/Library/Keychains/macos-build.keychain -P "${{ inputs.certificate-password }}" -T /usr/bin/codesign -T /usr/bin/productsign
+        # attempt to import p12 directly but fallback if it fails
+        if ! import_cert "${{ steps.code-sign-action-internal.outputs.signcert }}" "${{ inputs.certificate-password }}"; then
+          openssl pkcs12 -in "${{ steps.code-sign-action-internal.outputs.signcert }}" -nocerts -out "$RUNNER_TEMP/codesign.key" -nodes -password pass:"${{ inputs.certificate-password }}"
+          openssl pkcs12 -in "${{ steps.code-sign-action-internal.outputs.signcert }}" -clcerts -nokeys -out "$RUNNER_TEMP/codesign.crt" -password pass:"${{ inputs.certificate-password }}"
+          import_cert "$RUNNER_TEMP/codesign.key" ""
+          import_cert "$RUNNER_TEMP/codesign.crt" ""
+        fi
 
         # Key signing
         security set-key-partition-list -S apple-tool:,apple: -s -k actions macos-build.keychain
