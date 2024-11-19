@@ -173,6 +173,10 @@ runs:
           $fromUri = New-Object System.Uri -ArgumentList $resolvedFromPath
           $toUri = New-Object System.Uri -ArgumentList $resolvedToPath
 
+          # compute the relative path
+          $relativeUri = $fromUri.MakeRelativeUri($toUri)
+          $relativePath = [System.Uri]::UnescapeDataString($relativeUri.ToString())
+
           # convert URI-style paths to file system style paths (Windows-specific)
           if ($relativePath -notlike "*:*") {
             $relativePath = $relativePath -replace '/', '\'
@@ -333,30 +337,30 @@ runs:
         $ErrorActionPreference = "Stop"
 
         echo "::group::Signsetup"
-        # Get some things for cert opts
+        # get some things for cert opts
         $file = "${{ steps.code-sign-action-internal.outputs.file }}"
         $cert_secure_password = $null
         $signtool = "${env:ProgramFiles(x86)}\Windows Kits\10\bin\x64\signtool.exe"
         $signtool2022 = "${env:ProgramFiles(x86)}\Windows Kits\10\bin\10.0.17763.0\x86\signtool.exe"
 
-        # Throw error if file does not exist
+        # throw error if file does not exist
         if (!(Test-Path "${{ steps.code-sign-action-internal.outputs.file }}"))
         {
           throw "${{ steps.code-sign-action-internal.outputs.file }} does not exist"
         }
 
-        # Use more recent signtool if we can
+        # use more recent signtool if we can
         If (Test-Path $signtool2022) {
           $signtool = "$signtool2022"
         }
         echo "::endgroup::"
 
-        # Verify the cert and password are good
+        # verify the cert and password are good
         Write-Output "Verifying cert is good to go..."
         $cert_secure_password = ConvertTo-SecureString "${{ inputs.certificate-password }}" -AsPlainText -Force
         Import-PfxCertificate -FilePath "${{ steps.code-sign-action-internal.outputs.signcert }}" -Password $cert_secure_password -CertStoreLocation "Cert:\LocalMachine\My"
 
-        # Sign and verify
+        # sign and verify
         Write-Output "Trying to sign ${{ steps.code-sign-action-internal.outputs.file }} with $signtool..."
         & $signtool sign -f "${{ steps.code-sign-action-internal.outputs.signcert }}" -p "${{ inputs.certificate-password }}" -fd sha256 -tr "http://timestamp.comodoca.com/?td=sha256" -td sha256 ${{ inputs.options }} -as -v "${{ steps.code-sign-action-internal.outputs.file }}"
         Write-Output "Verifying $file has been signed with the signtool..."
