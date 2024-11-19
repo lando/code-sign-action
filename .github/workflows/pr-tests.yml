@@ -4,7 +4,7 @@ on:
   pull_request:
 
 jobs:
-  basic-tests:
+  default-signtool-tests:
     runs-on: ${{ matrix.os }}
     env:
       term: xterm
@@ -12,28 +12,94 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: macos-13
+          - os: macos-14
             file: dist/@lando/code-sign-action
-            certificate-data: APPLE_CERT_DATA
-            certificate-password: APPLE_CERT_PASSWORD
-            node-version: '18'
-          - os: ubuntu-22.04
-            file: dist/@lando/code-sign-action
-            certificate-data: KEYLOCKER_CLIENT_CERT
-            certificate-password: KEYLOCKER_CLIENT_CERT_PASSWORD
-            node-version: '18'
+            node-version: '20'
           - os: windows-2022
             file: dist/@lando/code-sign-action.exe
-            certificate-data: KEYLOCKER_CLIENT_CERT
-            certificate-password: KEYLOCKER_CLIENT_CERT_PASSWORD
-            node-version: '18'
+            node-version: '20'
+
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
       - name: Install node ${{ matrix.node-version }}
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: npm
+      - name: Install dependencies
+        shell: bash
+        run: npm clean-install --prefer-offline --frozen-lockfile
+      - name: Package node binary
+        shell: bash
+        run: npm run build
+      - name: Trust test certs
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          # dump
+          echo "${{ secrets.DEFAULT_CERT_DATA }}" | base64 --decode > /tmp/LandoCodeSigningTest.p12
+
+          # extract
+          openssl pkcs12 -in /tmp/LandoCodeSigningTest.p12 -clcerts -nokeys -out /tmp/LandoCodeSigningTest.pem -password pass:${{ secrets.DEFAULT_CERT_PASSWORD }}
+
+          # trust
+          sudo security authorizationdb write com.apple.trust-settings.user allow
+          sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain /tmp/LandoCodeSigningTest.pem
+          sudo security find-certificate -a -c "Lando System Code Signing Test Certificate" -p /Library/Keychains/System.keychain
+      - name: Trust test certs
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          # vars
+          $temp_dir = "$env:TMP"
+          $cert_data = "${{ secrets.DEFAULT_CERT_DATA }}"
+          $cert_path = "$temp_dir\LandoCodeSigningTest.p12"
+          $cert_password = "${{ secrets.DEFAULT_CERT_PASSWORD }}"
+          $cert_secure_password = ConvertTo-SecureString -String $cert_password -Force -AsPlainText
+          $cert_store  = "Cert:\LocalMachine\Root"
+
+          # dump
+          If (!(Test-Path $cert_path)) {
+            Write-Output "Dumping cert to $cert_path..."
+            $bytes = [Convert]::FromBase64String($cert_data)
+            [IO.File]::WriteAllBytes($cert_path, $bytes)
+          }
+
+          # trust
+          Import-PfxCertificate -FilePath $cert_path -CertStoreLocation $cert_store -Password $cert_secure_password
+      - name: Codesign
+        id: code-sign-action
+        uses: ./
+        with:
+          file: ${{ matrix.file }}
+          certificate-data: ${{ secrets.DEFAULT_CERT_DATA }}
+          certificate-id: LSL337X6
+          certificate-password: ${{ secrets.DEFAULT_CERT_PASSWORD }}
+      - name: Test output
+        shell: bash
+        run: |
+          echo "${{ steps.code-sign-action.outputs.file }}"
+          stat "${{ steps.code-sign-action.outputs.file }}"
+      - name: Execute file
+        shell: bash
+        run: chmod +x "${{ steps.code-sign-action.outputs.file }}" && "${{ steps.code-sign-action.outputs.file }}"
+
+  keylocker-tests:
+    runs-on: windows-2022
+    env:
+      term: xterm
+    strategy:
+      fail-fast: false
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install node ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
           cache: npm
@@ -44,75 +110,41 @@ jobs:
         shell: bash
         run: npm run build
       - name: Codesign
-        uses: ./
         id: code-sign-action
+        uses: ./
         with:
-          file: ${{ matrix.file }}
-          certificate-data: ${{ secrets[matrix.certificate-data] }}
-          certificate-password: ${{ secrets[matrix.certificate-password] }}
-          apple-team-id: FY8GAUX282
+          file: dist/@lando/code-sign-action.exe
+          certificate-data: ${{ secrets.KEYLOCKER_CLIENT_CERT }}
+          certificate-password: ${{ secrets.KEYLOCKER_CLIENT_CERT_PASSWORD }}
           keylocker-host: https://clientauth.one.digicert.com
           keylocker-api-key: ${{ secrets.KEYLOCKER_API_KEY }}
           keylocker-cert-sha1-hash: ${{ secrets.KEYLOCKER_CERT_SHA1_HASH }}
           keylocker-keypair-alias: ${{ secrets.KEYLOCKER_KEYPAIR_ALIAS }}
-      - name: Test outputs + execute file
+      - name: Test output
         shell: bash
-        env:
-          FILE: ${{ steps.code-sign-action.outputs.file }}
         run: |
-          chmod +x "$FILE"
-          "$FILE"
-
-  options-tests:
-    runs-on: macos-13
-    env:
-      term: xterm
-    strategy:
-      fail-fast: false
-      matrix:
-        node-version:
-          - '18'
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
-      - name: Install node ${{ matrix.node-version }}
-        uses: actions/setup-node@v3
-        with:
-          node-version: ${{ matrix.node-version }}
-          cache: npm
-      - name: Install dependencies
+          echo "${{ steps.code-sign-action.outputs.file }}"
+          stat "${{ steps.code-sign-action.outputs.file }}"
+      - name: Execute file
         shell: bash
-        run: npm clean-install --prefer-offline --frozen-lockfile
-      - name: Package node binary
-        shell: bash
-        run: npm run build
-      - name: Codesign
-        uses: ./
-        with:
-          file: "dist/@lando/code-sign-action"
-          certificate-data: ${{ secrets.APPLE_CERT_DATA }}
-          certificate-password: ${{ secrets.APPLE_CERT_PASSWORD }}
-          apple-team-id: FY8GAUX282
-          options: --options runtime --entitlements entitlements.xml
+        run: chmod +x "${{ steps.code-sign-action.outputs.file }}" && "${{ steps.code-sign-action.outputs.file }}"
 
   notarize-tests:
-    runs-on: macos-13
+    runs-on: macos-14
     env:
       term: xterm
     strategy:
       fail-fast: false
       matrix:
         node-version:
-          - '18'
+          - '20'
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
       - name: Install node ${{ matrix.node-version }}
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
           cache: npm
@@ -123,9 +155,10 @@ jobs:
         shell: bash
         run: npm run build
       - name: Codesign
+        id: code-sign-action
         uses: ./
         with:
-          file: "dist/@lando/code-sign-action"
+          file: dist/@lando/code-sign-action
           certificate-data: ${{ secrets.APPLE_CERT_DATA }}
           certificate-password: ${{ secrets.APPLE_CERT_PASSWORD }}
           apple-notary-user: ${{ secrets.APPLE_NOTARY_USER }}
@@ -133,3 +166,11 @@ jobs:
           apple-team-id: FY8GAUX282
           apple-product-id: dev.lando.code-sign-action
           options: --options runtime --entitlements entitlements.xml
+      - name: Test output
+        shell: bash
+        run: |
+          echo "${{ steps.code-sign-action.outputs.file }}"
+          stat "${{ steps.code-sign-action.outputs.file }}"
+      - name: Execute file
+        shell: bash
+        run: chmod +x "${{ steps.code-sign-action.outputs.file }}" && "${{ steps.code-sign-action.outputs.file }}"
