@@ -281,7 +281,7 @@ runs:
         fi
 
         function import_cert() {
-          security import "$1" -k "~/Library/Keychains/macos-build.keychain" -P "$2" -T /usr/bin/codesign -T /usr/bin/productsign
+          security import "$1" -k ~/Library/Keychains/macos-build.keychain -P "$2" -T /usr/bin/codesign -T /usr/bin/productsign
         }
 
         # Create keychain
