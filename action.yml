@@ -241,7 +241,6 @@ runs:
         fi
 
     - name: Dump certs
-      shell: bash
       if: steps.code-sign-action-internal.outputs.os == 'linux'
       run: |
         echo "::group::Dumping inputs.certificate-data"
@@ -249,7 +248,6 @@ runs:
         echo "${{ inputs.certificate-data }}" | base64 --decode | sudo install -D /dev/stdin "${{ steps.code-sign-action-internal.outputs.signcert }}"
         echo "::endgroup::"
     - name: Dump certs
-      shell: bash
       if: steps.code-sign-action-internal.outputs.os == 'macos'
       run: |
         echo "::group::Dumping inputs.certificate-data"
@@ -270,7 +268,6 @@ runs:
 
     # signing with codesign on macos
     - name: Signing with ${{ steps.code-sign-action-internal.outputs.signtool }} (${{ steps.code-sign-action-internal.outputs.os }})
-      shell: bash
       if: steps.code-sign-action-internal.outputs.signtool == 'codesign'
       run: |
         echo "::group::Signsetup"
@@ -429,22 +426,20 @@ runs:
     #     Write-Output "Verifying $file has been signed with the signtool..."
     #     & $signtool verify -pa -v "$file"
 
-    # - name: Notarize
-    #   if: runner.os == 'macOS' && inputs.apple-notary-user && inputs.apple-notary-password && inputs.apple-product-id
-    #   uses: lando/notarize-action@v2
-    #   with:
-    #     appstore-connect-username: ${{ inputs.apple-notary-user }}
-    #     appstore-connect-password: ${{ inputs.apple-notary-password }}
-    #     appstore-connect-team-id: ${{ inputs.apple-team-id }}
-    #     primary-bundle-id: ${{ inputs.apple-product-id }}
-    #     product-path: ${{ inputs.file }}
-    #     tool: ${{ inputs.apple-notary-tool }}
-    #     verbose: true
-    # - name: Verify Notarization
-    #   if: runner.os == 'macOS' && inputs.apple-notary-user && inputs.apple-notary-password && inputs.apple-product-id
-    #   shell: bash
-    #   run: codesign -vvvv -R="notarized" --check-notarization ${{ inputs.file }}
-
+    - name: Notarizing
+      if: steps.code-sign-action-internal.outputs.notarize == 'true'
+      uses: lando/notarize-action@v2
+      with:
+        appstore-connect-username: ${{ inputs.apple-notary-user }}
+        appstore-connect-password: ${{ inputs.apple-notary-password }}
+        appstore-connect-team-id: ${{ steps.code-sign-action-internal.outputs.certid }}
+        primary-bundle-id: ${{ inputs.apple-product-id }}
+        product-path: ${{ steps.code-sign-action-internal.outputs.file }}
+        tool: ${{ inputs.apple-notary-tool }}
+        verbose: true
+    - name: Verifying Notarization
+      if: steps.code-sign-action-internal.outputs.notarize == 'true'
+      run: codesign -vvvv -R="notarized" --check-notarization "${{ steps.code-sign-action-internal.outputs.file }}"
     - name: Set outputs
       shell: bash
       id: code-sign-action
