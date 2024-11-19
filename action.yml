@@ -177,7 +177,7 @@ runs:
         }
 
         $relativePath = Get-RelativePath -FromPath "$file" -ToPath "$env:GITHUB_WORKSPACE"
-        Write-Host "Relative Path: $relativePath"
+        Write-Host "from: $file, to: $env:GITHUB_WORKSPACE, is: $relativePath"
 
     - name: Set osy internal inputs
       if: runner.os != 'Windows'
