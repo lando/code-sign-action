@@ -177,12 +177,10 @@ runs:
         }
 
         $test2 = Get-RelativePath -FromPath "D:\a\code-sign-action\code-sign-action" -ToPath "D:\a\code-sign-action\code-sign-action\dist\@lando\code-sign-action.exe"
-        $test3 = Get-RelativePath -FromPath "C:\Users\John\Documents" -ToPath "C:\Users\John\Projects\ProjectA\File.txt"
 
         $relativePath = Get-RelativePath -FromPath "$env:GITHUB_WORKSPACE" -ToPath "$file"
         Write-Host "from: $env:GITHUB_WORKSPACE, to: $file, is: $relativePath"
         Write-Host "$test2"
-        Write-Host "$test3"
 
     - name: Set osy internal inputs
       if: runner.os != 'Windows'
