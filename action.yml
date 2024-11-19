@@ -160,7 +160,7 @@ runs:
               [string]$ToPath
           )
 
-          # Ensure paths are fully qualified
+          # Create URI objects
           $fromUri = New-Object System.Uri -ArgumentList (Resolve-Path -LiteralPath $FromPath).Path
           $toUri = New-Object System.Uri -ArgumentList (Resolve-Path -LiteralPath $ToPath).Path
 
@@ -168,9 +168,9 @@ runs:
           $relativeUri = $fromUri.MakeRelativeUri($toUri)
           $relativePath = [System.Uri]::UnescapeDataString($relativeUri.ToString())
 
-          # Convert URI-style paths to file system style paths
-          if ($toUri.IsFile && $relativePath -notlike "*:*") {
-              $relativePath = $relativePath -replace '/', '\'
+          # Convert URI-style paths to file system style paths (Windows-specific)
+          if ($relativePath -notlike "*:*") {
+            $relativePath = $relativePath -replace '/', '\'
           }
 
           return $relativePath
