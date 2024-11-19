@@ -120,13 +120,14 @@ jobs:
           keylocker-api-key: ${{ secrets.KEYLOCKER_API_KEY }}
           keylocker-cert-sha1-hash: ${{ secrets.KEYLOCKER_CERT_SHA1_HASH }}
           keylocker-keypair-alias: ${{ secrets.KEYLOCKER_KEYPAIR_ALIAS }}
-      - name: Test outputs + execute file
+      - name: Test output
         shell: bash
-        env:
-          FILE: ${{ steps.code-sign-action.outputs.file }}
         run: |
-          chmod +x "$FILE"
-          "$FILE"
+          echo "${{ steps.code-sign-action.outputs.file }}"
+          stat "${{ steps.code-sign-action.outputs.file }}"
+      - name: Execute file
+        shell: bash
+        run: chmod +x "${{ steps.code-sign-action.outputs.file }}" && "${{ steps.code-sign-action.outputs.file }}"
 
   notarize-tests:
     runs-on: macos-14
@@ -164,3 +165,11 @@ jobs:
           apple-team-id: FY8GAUX282
           apple-product-id: dev.lando.code-sign-action
           options: --options runtime --entitlements entitlements.xml
+      - name: Test output
+        shell: bash
+        run: |
+          echo "${{ steps.code-sign-action.outputs.file }}"
+          stat "${{ steps.code-sign-action.outputs.file }}"
+      - name: Execute file
+        shell: bash
+        run: chmod +x "${{ steps.code-sign-action.outputs.file }}" && "${{ steps.code-sign-action.outputs.file }}"
