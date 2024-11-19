@@ -302,7 +302,7 @@ runs:
         CERTIFICATE_HOST: ${{ inputs.keylocker-host }}
         CERTIFICATE_HOST_API_KEY: ${{ inputs.keylocker-api-key }}
         CERTIFICATE_SHA1_HASH: ${{ inputs.keylocker-cert-sha1-hash }}
-        CLIENT_CERTIFICATE: ${{ steps.code-sign-action-internal.outputs.signcert }}
+        CLIENT_CERTIFICATE: ${{ inputs.certificate-data }}"
         CLIENT_CERTIFICATE_PASSWORD: ${{ inputs.certificate-password }}"
         KEYPAIR_ALIAS: ${{ inputs.keylocker-keypair-alias }}"
 
