@@ -273,7 +273,7 @@ runs:
       shell: bash
       if: steps.code-sign-action-internal.outputs.signtool == 'codesign'
       run: |
-        # echo "::group::Signsetup"
+        echo "::group::Signsetup"
         # Throw error if file does not exist
         if [ ! -f "${{ steps.code-sign-action-internal.outputs.file }}" ]; then
           echo "${{ steps.code-sign-action-internal.outputs.file }} does not exist!"
@@ -300,7 +300,7 @@ runs:
 
         # Key signing
         security set-key-partition-list -S apple-tool:,apple: -s -k actions macos-build.keychain
-        # echo "::endgroup::"
+        echo "::endgroup::"
 
         # Scope out the keychain
         security find-identity -v macos-build.keychain
