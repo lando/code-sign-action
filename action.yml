@@ -160,15 +160,20 @@ runs:
               [string]$ToPath
           )
 
-          # Create URI objects
-          $fromUri = New-Object System.Uri -ArgumentList (Resolve-Path -LiteralPath $FromPath).Path
-          $toUri = New-Object System.Uri -ArgumentList (Resolve-Path -LiteralPath $ToPath).Path
+          # ensure paths are fully resolved
+          $resolvedFromPath = (Resolve-Path -LiteralPath $FromPath).Path
+          $resolvedToPath = (Resolve-Path -LiteralPath $ToPath).Path
 
-          # Compute the relative path
-          $relativeUri = $fromUri.MakeRelativeUri($toUri)
-          $relativePath = [System.Uri]::UnescapeDataString($relativeUri.ToString())
+          # ensure $FromPath is treated as a directory (append a trailing slash if it's a directory and doesn't already have one)
+          if ((Test-Path -LiteralPath $resolvedFromPath -PathType Container) -and ($resolvedFromPath -notlike '*\')) {
+            $resolvedFromPath += '\'
+          }
 
-          # Convert URI-style paths to file system style paths (Windows-specific)
+          # create URI objects
+          $fromUri = New-Object System.Uri -ArgumentList $resolvedFromPath
+          $toUri = New-Object System.Uri -ArgumentList $resolvedToPath
+
+          # convert URI-style paths to file system style paths (Windows-specific)
           if ($relativePath -notlike "*:*") {
             $relativePath = $relativePath -replace '/', '\'
           }
@@ -176,11 +181,8 @@ runs:
           return $relativePath
         }
 
-        $test2 = Get-RelativePath -FromPath "D:\a\code-sign-action\code-sign-action" -ToPath "D:\a\code-sign-action\code-sign-action\dist\@lando\code-sign-action.exe"
-
         $relativePath = Get-RelativePath -FromPath "$env:GITHUB_WORKSPACE" -ToPath "$file"
         Write-Host "from: $env:GITHUB_WORKSPACE, to: $file, is: $relativePath"
-        Write-Host "$test2"
 
     - name: Set osy internal inputs
       if: runner.os != 'Windows'
