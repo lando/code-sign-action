@@ -271,7 +271,7 @@ runs:
       if: steps.code-sign-action-internal.outputs.signtool == 'osslsigncode'
       shell: bash
       run: |
-        echo "::group::Signsetup"
+        #echo "::group::Signsetup"
         if [ ! -f "${{ steps.code-sign-action-internal.outputs.file }}" ]; then
           echo "${{ steps.code-sign-action-internal.outputs.file }} does not exist!"
           exit 5
@@ -282,8 +282,11 @@ runs:
         sudo apt install osslsigncode -y
 
         # mv signfile because osslsigncode cannot overwrite to itself
-        mv "${{ steps.code-sign-action-internal.outputs.file }}" /tmp/csa-file-${{ github.sha }}
-        echo "::endgroup::"
+        mv "${{ steps.code-sign-action-internal.outputs.file }}" "/tmp/csa-file-${{ github.sha }}"
+        file "/tmp/csa-file-${{ github.sha }}"
+        openssl pkcs12 -info -in "${{ steps.code-sign-action-internal.outputs.signcert }}" -nodes -noout
+
+        #echo "::endgroup::"
 
         osslsigncode sign \
           -pkcs12 "${{ steps.code-sign-action-internal.outputs.signcert }}" \
@@ -293,7 +296,6 @@ runs:
           -t http://timestamp.digicert.com
 
         osslsigncode verify -in "${{ steps.code-sign-action-internal.outputs.file }}"
-
 
     # signing with codesign on macos
     - name: Signing with ${{ steps.code-sign-action-internal.outputs.signtool }} (${{ steps.code-sign-action-internal.outputs.os }})
