@@ -293,7 +293,7 @@ runs:
 
         # import key/cert pair
         security import "$RUNNER_TEMP/codesign.key" -k ~/Library/Keychains/macos-build.keychain -P "" -T /usr/bin/codesign -T /usr/bin/productsign
-        security import "$RUNNER_TEMP/codesign.crt" -k ~/Library/Keychains/macos-build.keychain -P "" -T /usr/bin/codesign -T /usr/bin/productsign
+        security import "$RUNNER_TEMP/codesign.crt" -k ~/Library/Keychains/macos-build.keychain -P "" -T /usr/bin/codesign -T /usr/bin/productsign || true
 
         # Key signing
         security set-key-partition-list -S apple-tool:,apple: -s -k actions macos-build.keychain
