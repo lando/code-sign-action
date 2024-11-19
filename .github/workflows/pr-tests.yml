@@ -15,8 +15,14 @@ jobs:
           - os: macos-14
             file: dist/@lando/code-sign-action
             node-version: '20'
+          - os: macos-14
+            file: /Users/runner/work/code-sign-action/code-sign-action/dist/@lando/code-sign-action
+            node-version: '20'
           - os: windows-2022
-            file: dist/@lando/code-sign-action.exe
+            file: dist\@lando\code-sign-action.exe
+            node-version: '20'
+          - os: windows-2022
+            file: D:\a\code-sign-action\code-sign-action/dist\@lando\code-sign-action.exe
             node-version: '20'
 
     steps:
