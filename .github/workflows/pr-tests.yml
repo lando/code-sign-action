@@ -196,39 +196,39 @@ jobs:
   #         apple-team-id: FY8GAUX282
   #         options: --options runtime --entitlements entitlements.xml
 
-  # notarize-tests:
-  #   runs-on: macos-14
-  #   env:
-  #     term: xterm
-  #   strategy:
-  #     fail-fast: false
-  #     matrix:
-  #       node-version:
-  #         - '20'
-  #   steps:
-  #     - name: Checkout code
-  #       uses: actions/checkout@v4
-  #       with:
-  #         fetch-depth: 0
-  #     - name: Install node ${{ matrix.node-version }}
-  #       uses: actions/setup-node@v4
-  #       with:
-  #         node-version: ${{ matrix.node-version }}
-  #         cache: npm
-  #     - name: Install dependencies
-  #       shell: bash
-  #       run: npm clean-install --prefer-offline --frozen-lockfile
-  #     - name: Package node binary
-  #       shell: bash
-  #       run: npm run build
-  #     - name: Codesign
-  #       uses: ./
-  #       with:
-  #         file: "dist/@lando/code-sign-action"
-  #         certificate-data: ${{ secrets.APPLE_CERT_DATA }}
-  #         certificate-password: ${{ secrets.APPLE_CERT_PASSWORD }}
-  #         apple-notary-user: ${{ secrets.APPLE_NOTARY_USER }}
-  #         apple-notary-password: ${{ secrets.APPLE_NOTARY_PASSWORD }}
-  #         apple-team-id: FY8GAUX282
-  #         apple-product-id: dev.lando.code-sign-action
-  #         options: --options runtime --entitlements entitlements.xml
+  notarize-tests:
+    runs-on: macos-14
+    env:
+      term: xterm
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version:
+          - '20'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install node ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: npm
+      - name: Install dependencies
+        shell: bash
+        run: npm clean-install --prefer-offline --frozen-lockfile
+      - name: Package node binary
+        shell: bash
+        run: npm run build
+      - name: Codesign
+        uses: ./
+        with:
+          file: "dist/@lando/code-sign-action"
+          certificate-data: ${{ secrets.APPLE_CERT_DATA }}
+          certificate-password: ${{ secrets.APPLE_CERT_PASSWORD }}
+          apple-notary-user: ${{ secrets.APPLE_NOTARY_USER }}
+          apple-notary-password: ${{ secrets.APPLE_NOTARY_PASSWORD }}
+          apple-team-id: FY8GAUX282
+          apple-product-id: dev.lando.code-sign-action
+          options: --options runtime --entitlements entitlements.xml
