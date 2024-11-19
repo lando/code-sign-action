@@ -273,7 +273,7 @@ runs:
       shell: bash
       if: steps.code-sign-action-internal.outputs.signtool == 'codesign'
       run: |
-        echo "::group::Signsetup"
+        # echo "::group::Signsetup"
         # Throw error if file does not exist
         if [ ! -f "${{ steps.code-sign-action-internal.outputs.file }}" ]; then
           echo "${{ steps.code-sign-action-internal.outputs.file }} does not exist!"
@@ -286,6 +286,9 @@ runs:
         security unlock-keychain -p actions macos-build.keychain
         security set-keychain-settings -t 3600 -u macos-build.keychain
 
+        security find-identity -v macos-build.keychain
+        security find-identity -v
+
         # export key/cert pair from p12
         # NOTE: we do this because security import cannot handle decrypting newer p12 algos
         openssl pkcs12 -in "${{ steps.code-sign-action-internal.outputs.signcert }}" -nocerts -out "$RUNNER_TEMP/codesign.key" -nodes -password pass:"${{ inputs.certificate-password }}"
@@ -297,7 +300,7 @@ runs:
 
         # Key signing
         security set-key-partition-list -S apple-tool:,apple: -s -k actions macos-build.keychain
-        echo "::endgroup::"
+        # echo "::endgroup::"
 
         # Scope out the keychain
         security find-identity -v macos-build.keychain
@@ -307,6 +310,7 @@ runs:
 
         # Verify the code signature
         codesign -v "${{ steps.code-sign-action-internal.outputs.file }}" --verbose
+
 
     # @TODO: signing with signtool on windows
 
