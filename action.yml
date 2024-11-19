@@ -146,10 +146,38 @@ runs:
 
         # input file
         if ((Split-Path -Path "${{ inputs.file }}" -IsAbsolute) -eq $true) {
-          Write-Output "file=${{ inputs.file }}" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          $file="${{ inputs.file }}"
         } else {
-          Write-Output "file=$(Get-Location)/${{ inputs.file }}" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          $file="$(Get-Location)/${{ inputs.file }}"
         }
+
+        Write-Output "file=$file" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+
+        # relative file path from GITHUB_WORKSPACE for keylocker things
+        function Get-RelativePath {
+          param (
+              [string]$FromPath,
+              [string]$ToPath
+          )
+
+          # Ensure paths are fully qualified
+          $fromUri = New-Object System.Uri -ArgumentList (Resolve-Path -LiteralPath $FromPath).Path
+          $toUri = New-Object System.Uri -ArgumentList (Resolve-Path -LiteralPath $ToPath).Path
+
+          # Compute the relative path
+          $relativeUri = $fromUri.MakeRelativeUri($toUri)
+          $relativePath = [System.Uri]::UnescapeDataString($relativeUri.ToString())
+
+          # Convert URI-style paths to file system style paths
+          if ($toUri.IsFile && $relativePath -notlike "*:*") {
+              $relativePath = $relativePath -replace '/', '\'
+          }
+
+          return $relativePath
+        }
+
+        $relativePath = Get-RelativePath -FromPath "$file" -ToPath "$env:GITHUB_WORKSPACE"
+        Write-Host "Relative Path: $relativePath"
 
     - name: Set osy internal inputs
       if: runner.os != 'Windows'

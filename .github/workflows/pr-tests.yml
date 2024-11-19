@@ -164,7 +164,7 @@ jobs:
       - name: Codesign
         uses: ./
         with:
-          file: "dist/@lando/code-sign-action"
+          file: dist/@lando/code-sign-action.exe
           certificate-data: ${{ secrets.APPLE_CERT_DATA }}
           certificate-password: ${{ secrets.APPLE_CERT_PASSWORD }}
           apple-notary-user: ${{ secrets.APPLE_NOTARY_USER }}
