@@ -4,7 +4,9 @@ This is a GitHub action that allows you to code sign binary files.
 
 It was developed specifically to code sign binaries built using [@lando/pkg-action](https://github.com/marketplace/actions/pkg-action) so it may not be appropriate for all use cases. It also can do basic [macOS notarization](https://developer.apple.com/documentation/security/notarizing_macos_software_before_distribution).
 
-It will automatically set the `signtool` based on `runner.os` and the inputs below that you pass in. Note that signing is not supported on `linux` because you cannot sign binary files on Linux and it is not required for binaries to be signed anyway.
+It will automatically set the `signtool` based on `runner.os` and the inputs that you pass in.
+
+Note that signing is **not supported** on `linux` because you cannot sign binary files on Linux and it is not required for binaries to be signed anyway.
 
 ## Required Inputs
 
@@ -28,14 +30,14 @@ jobs:
       - name: Sign binary
         uses: lando/code-sign-action@v3
         with:
-          file: path/to/binary
+          file: path/to/binary.exe
           certificate-data: ${{ secrets.WINDOZE_CERT_DATA }}
           certificate-password: ${{ secrets.WINDOZE_CERT_PASSWORD }}
 ```
 
 ### Codesign
 
-[Codesign](https://ss64.com/mac/codesign.htmll) is the default (and only) `signtool` when using `macos` runners.
+[Codesign](https://ss64.com/mac/codesign.htmll) is the default (and currently only) `signtool` when using `macos` runners.
 
 These keys must be set correctly on a `macos` runner.
 
@@ -60,7 +62,7 @@ jobs:
           certificate-password: ${{ secrets.APPLE_CERT_PASSWORD }}
 ```
 
-Note that you can use `apple-team-id` instead of `certificate-id` if you prefer.
+Note that you can also use `apple-team-id` to set the `certificate-id` if you prefer.
 
 Also note that if you are using an [Apple Developer](https://developer.apple.com/) codesigning certificate **you must** set the `certificate-id` or `apple-team-id` to your [Apple Team ID](https://developer.apple.com/help/account/manage-your-team/locate-your-team-id/)
 
@@ -118,7 +120,7 @@ These keys must be set correctly on a `windows` runner.
 | `keylocker-host` | The `SM_HOST` of the KeyLocker host eg DigiCert One. | `https://clientauth.one.digicert.com`|
 | `keylocker-api-key` | The `SM_API_KEY` for the KeyLocker `SM_HOST`. | `${{ secrets.KEYLOCKER_API_KEY }}` |
 | `keylocker-cert-sha1-hash` | The `SM_CODE_SIGNING_CERT_SHA1_HASH` fingerprint for `SM_CLIENT_CERT_FILE`. | `${{ secrets.KEYLOCKER_CERT_SHA1_HASH }}` |
-| `keylocker-keypair-alias` | The `SM_KEYPAIR_ALIAS` for the KeyLocker `SM_HOST`. | `${{ secrets.KEYLOCKER_CERT_SHA1_HASH }}` |
+| `keylocker-keypair-alias` | The `SM_KEYPAIR_ALIAS` for the KeyLocker `SM_HOST`. | `${{ secrets.KEYLOCKER_KEYPAIR_ALIAS }}` |
 
 ```yaml
 jobs:
