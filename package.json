@@ -9,7 +9,7 @@
       "email": "mike@lando.dev"
     }
   ],
-  "license": "GPL-3.0",
+  "license": "MIT",
   "repository": "https://github.com/lando/code-sign-action",
   "bugs": "https://github.com/lando/code-sign-action/issues",
   "homepage": "https://github.com/lando/code-sign-action",
