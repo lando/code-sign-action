@@ -1,5 +1,7 @@
 ## {{ UNRELEASED_VERSION }} - [{{ UNRELEASED_DATE }}]({{ UNRELEASED_LINK }})
 
+* Updated to `digicert/ssm-code-signing@v1.1.0`
+
 ## v3.0.0 - [November 19, 2024](https://github.com/lando/code-sign-action/releases/tag/v3.0.0)
 
 ### **BREAKING CHANGES**

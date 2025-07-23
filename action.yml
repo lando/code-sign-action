@@ -368,9 +368,13 @@ runs:
         Write-Output "Verifying $file has been signed with the signtool..."
         & $signtool verify -pa -v "${{ steps.code-sign-action-internal.outputs.file }}"
 
+    - name: Install DigiCert Client tools from Github Custom Actions marketplace
+      if: steps.code-sign-action-internal.outputs.signtool == 'keylocker' || steps.code-sign-action-internal.outputs.signtool == 'smctl'
+      uses: digicert/ssm-code-signing@v1.1.0
+
     - name: Signing with ${{ steps.code-sign-action-internal.outputs.signtool }} (${{ steps.code-sign-action-internal.outputs.os }})
       if: steps.code-sign-action-internal.outputs.signtool == 'keylocker' || steps.code-sign-action-internal.outputs.signtool == 'smctl'
-      uses: cognitedata/code-sign-action/@v3
+      uses: cognitedata/code-sign-action@v3
       with:
         path-to-binary: ${{ steps.code-sign-action-internal.outputs.ghwrfile }}
       env:
@@ -380,6 +384,25 @@ runs:
         CLIENT_CERTIFICATE: ${{ inputs.certificate-data }}
         CLIENT_CERTIFICATE_PASSWORD: ${{ inputs.certificate-password }}
         KEYPAIR_ALIAS: ${{ inputs.keylocker-keypair-alias }}
+
+
+    - name: Signing with ${{ steps.code-sign-action-internal.outputs.signtool }} (${{ steps.code-sign-action-internal.outputs.os }})
+      if: steps.code-sign-action-internal.outputs.signtool == 'keylocker' || steps.code-sign-action-internal.outputs.signtool == 'smctl'
+      env:
+        CERTIFICATE_HOST: ${{ inputs.keylocker-host }}
+        CERTIFICATE_HOST_API_KEY: ${{ inputs.keylocker-api-key }}
+        CERTIFICATE_SHA1_HASH: ${{ inputs.keylocker-cert-sha1-hash }}
+        CLIENT_CERTIFICATE: ${{ inputs.certificate-data }}
+        CLIENT_CERTIFICATE_PASSWORD: ${{ inputs.certificate-password }}
+        KEYPAIR_ALIAS: ${{ inputs.keylocker-keypair-alias }}
+      run: |
+        echo "${{ env.CLIENT_CERTIFICATE }}" | base64 --decode > /d/Certificate_pkcs12.p12
+        echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+        echo "SM_HOST=${{ env.CERTIFICATE_HOST }}" >> "$GITHUB_ENV"
+        echo "SM_API_KEY=${{ env.CERTIFICATE_HOST_API_KEY }}" >> "$GITHUB_ENV"
+        echo "SM_CLIENT_CERT_FILE=D:\\Certificate_pkcs12.p12" >> "$GITHUB_ENV"
+        echo "SM_CLIENT_CERT_PASSWORD=${{ env.CLIENT_CERTIFICATE_PASSWORD }}" >> "$GITHUB_ENV"
 
     - name: Notarizing
       if: steps.code-sign-action-internal.outputs.notarize == 'true'
