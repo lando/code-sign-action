@@ -370,7 +370,7 @@ runs:
 
     - name: Signing with ${{ steps.code-sign-action-internal.outputs.signtool }} (${{ steps.code-sign-action-internal.outputs.os }})
       if: steps.code-sign-action-internal.outputs.signtool == 'keylocker' || steps.code-sign-action-internal.outputs.signtool == 'smctl'
-      uses: cognitedata/code-sign-action/@v3
+      uses: cognitedata/code-sign-action@5f2df722040f2a061476cf171f67ec6014382f2b # v3
       with:
         path-to-binary: ${{ steps.code-sign-action-internal.outputs.ghwrfile }}
       env:
@@ -383,7 +383,7 @@ runs:
 
     - name: Notarizing
       if: steps.code-sign-action-internal.outputs.notarize == 'true'
-      uses: lando/notarize-action@v2
+      uses: lando/notarize-action@b5c3ef16cf2fbcf2af26dc58c90255ec242abeed # v2
       with:
         appstore-connect-username: ${{ inputs.apple-notary-user }}
         appstore-connect-password: ${{ inputs.apple-notary-password }}
