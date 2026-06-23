@@ -9,7 +9,7 @@ on:
 
 jobs:
   add_to_project:
-    if: github.actor != 'dependabot[bot]'
+    if: github.event_name != 'pull_request' || !startsWith(github.head_ref, 'dependabot/')
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
