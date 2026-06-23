@@ -342,8 +342,13 @@ runs:
         # get some things for cert opts
         $file = "${{ steps.code-sign-action-internal.outputs.file }}"
         $cert_secure_password = $null
-        $signtool = "${env:ProgramFiles(x86)}\Windows Kits\10\bin\x64\signtool.exe"
-        $signtool2022 = "${env:ProgramFiles(x86)}\Windows Kits\10\bin\10.0.17763.0\x86\signtool.exe"
+        $signtool = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin\*\x64\signtool.exe" -ErrorAction SilentlyContinue |
+          Sort-Object { [version]$_.Directory.Parent.Name } -Descending |
+          Select-Object -First 1 -ExpandProperty FullName
+        $signtoolFallbacks = @(
+          "${env:ProgramFiles(x86)}\Windows Kits\10\bin\x64\signtool.exe",
+          "${env:ProgramFiles(x86)}\Windows Kits\10\bin\10.0.17763.0\x86\signtool.exe"
+        )
 
         # throw error if file does not exist
         if (!(Test-Path "${{ steps.code-sign-action-internal.outputs.file }}"))
@@ -351,20 +356,23 @@ runs:
           throw "${{ steps.code-sign-action-internal.outputs.file }} does not exist"
         }
 
-        # use more recent signtool if we can
-        If (Test-Path $signtool2022) {
-          $signtool = "$signtool2022"
+        # use a modern x64 signtool if available
+        If ([string]::IsNullOrEmpty($signtool)) {
+          $signtool = $signtoolFallbacks | Where-Object { Test-Path $_ } | Select-Object -First 1
+        }
+        If ([string]::IsNullOrEmpty($signtool)) {
+          throw "Could not find signtool.exe"
         }
         echo "::endgroup::"
 
         # verify the cert and password are good
         Write-Output "Verifying cert is good to go..."
         $cert_secure_password = ConvertTo-SecureString "${{ inputs.certificate-password }}" -AsPlainText -Force
-        Import-PfxCertificate -FilePath "${{ steps.code-sign-action-internal.outputs.signcert }}" -Password $cert_secure_password -CertStoreLocation "Cert:\LocalMachine\My"
+        $cert = Import-PfxCertificate -FilePath "${{ steps.code-sign-action-internal.outputs.signcert }}" -Password $cert_secure_password -CertStoreLocation "Cert:\LocalMachine\My"
 
         # sign and verify
         Write-Output "Trying to sign ${{ steps.code-sign-action-internal.outputs.file }} with $signtool..."
-        & $signtool sign -f "${{ steps.code-sign-action-internal.outputs.signcert }}" -p "${{ inputs.certificate-password }}" -fd sha256 -tr "http://timestamp.comodoca.com/?td=sha256" -td sha256 ${{ inputs.options }} -as -v "${{ steps.code-sign-action-internal.outputs.file }}"
+        & $signtool sign -sha1 $cert.Thumbprint -sm -fd sha256 -tr "http://timestamp.comodoca.com/?td=sha256" -td sha256 ${{ inputs.options }} -as -v "${{ steps.code-sign-action-internal.outputs.file }}"
         Write-Output "Verifying $file has been signed with the signtool..."
         & $signtool verify -pa -v "${{ steps.code-sign-action-internal.outputs.file }}"
 
