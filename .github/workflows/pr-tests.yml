@@ -5,6 +5,7 @@ on:
 
 jobs:
   default-signtool-tests:
+    if: github.actor != 'dependabot[bot]'
     runs-on: ${{ matrix.os }}
     env:
       term: xterm
@@ -94,6 +95,7 @@ jobs:
         run: chmod +x "${{ steps.code-sign-action.outputs.file }}" && "${{ steps.code-sign-action.outputs.file }}"
 
   keylocker-tests:
+    if: github.actor != 'dependabot[bot]'
     runs-on: windows-2022
     env:
       term: xterm
@@ -136,6 +138,7 @@ jobs:
         run: chmod +x "${{ steps.code-sign-action.outputs.file }}" && "${{ steps.code-sign-action.outputs.file }}"
 
   notarize-tests:
+    if: github.actor != 'dependabot[bot]'
     runs-on: macos-14
     env:
       term: xterm
