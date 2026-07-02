@@ -37,27 +37,43 @@ jobs:
       - name: Package node binary
         shell: bash
         run: npm run build
-      - name: Trust Apple Developer ID test anchor on Windows
+      - name: Trust Apple signer test anchor on Windows
         if: runner.os == 'Windows'
         shell: powershell
+        env:
+          APPLE_CERT_DATA: ${{ secrets.APPLE_CERT_DATA }}
+          APPLE_CERT_PASSWORD: ${{ secrets.APPLE_CERT_PASSWORD }}
         run: |
           $ErrorActionPreference = "Stop"
 
-          # This intentionally trusts the Developer ID G2 issuer directly as an
-          # ephemeral test anchor. The CA store lets Windows discover the issuer
-          # and the Root store lets signtool stop there instead of validating
-          # Apple's full production chain, which is outside this smoke test.
-          # Do not import Apple Root CA here; that makes Windows build the full
-          # Apple chain again and reintroduces the Developer ID G2 critical
-          # extension failure this smoke test is intentionally bypassing.
-          $certUrl = "https://www.apple.com/certificateauthority/DeveloperIDG2CA.cer"
-          $certPath = "$env:TEMP\DeveloperIDG2CA.cer"
+          # This intentionally trusts the leaf signing certificate directly as
+          # an ephemeral test anchor. The smoke test keeps signtool verify
+          # enabled while avoiding the Apple Developer ID intermediate chain
+          # that Windows cannot validate because of Apple's critical extension.
+          $pfxPath = "$env:TEMP\apple-signer.p12"
+          $certPath = "$env:TEMP\apple-signer.cer"
+          $certPassword = ConvertTo-SecureString $env:APPLE_CERT_PASSWORD -AsPlainText -Force
+          [IO.File]::WriteAllBytes($pfxPath, [Convert]::FromBase64String($env:APPLE_CERT_DATA))
+
+          $importedCerts = @(Import-PfxCertificate -FilePath $pfxPath -Password $certPassword -CertStoreLocation "Cert:\LocalMachine\My")
+          $signer = $importedCerts |
+            Where-Object { $_.HasPrivateKey -and $_.Subject -like "*466VYKC9T5*" } |
+            Select-Object -First 1
+          if ($null -eq $signer) {
+            throw "Could not find the expected Apple signer certificate in the imported PFX"
+          }
+
+          Export-Certificate -Cert $signer -FilePath $certPath | Out-Null
+          Write-Output "Trusting Apple signer certificate directly:"
+          $signer | Select-Object Subject, Issuer, Thumbprint, NotAfter
+          $signer.Extensions |
+            Select-Object @{ Name = "Oid"; Expression = { $_.Oid.Value } }, @{ Name = "Name"; Expression = { $_.Oid.FriendlyName } }, Critical
+
           $stores = @(
-            "Cert:\LocalMachine\CA",
+            "Cert:\LocalMachine\TrustedPeople",
+            "Cert:\LocalMachine\TrustedPublisher",
             "Cert:\LocalMachine\Root"
           )
-
-          Invoke-WebRequest -Uri $certUrl -OutFile $certPath
 
           foreach ($store in $stores) {
             Import-Certificate -FilePath $certPath -CertStoreLocation $store | Out-Null
@@ -65,9 +81,9 @@ jobs:
 
           foreach ($store in $stores) {
             $trusted = @(Get-ChildItem $store |
-              Where-Object { $_.Thumbprint -eq "5B45F61068B29FCC8FFFF1A7E99B78DA9E9C4635" })
+              Where-Object { $_.Thumbprint -eq $signer.Thumbprint })
             if ($trusted.Count -eq 0) {
-              throw "Developer ID G2 certificate was not found in $store after import"
+              throw "Apple signer certificate was not found in $store after import"
             }
             $trusted |
               Select-Object @{ Name = "Store"; Expression = { $store } }, Subject, Thumbprint, NotAfter
