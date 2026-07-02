@@ -44,27 +44,10 @@ jobs:
           APPLE_CERT_DATA: ${{ secrets.APPLE_CERT_DATA }}
           APPLE_CERT_PASSWORD: ${{ secrets.APPLE_CERT_PASSWORD }}
         run: |
-          $ErrorActionPreference = "Stop"
-
-          # This intentionally trusts the leaf signing certificate directly as
-          # an ephemeral test anchor. The smoke test keeps signtool verify
-          # enabled while avoiding the Apple Developer ID intermediate chain
-          # that Windows cannot validate because of Apple's critical extension.
-          $pfxPath = "$env:TEMP\apple-signer.p12"
-          $certPath = "$env:TEMP\apple-signer.cer"
-          $password = ConvertTo-SecureString $env:APPLE_CERT_PASSWORD -AsPlainText -Force
-          [IO.File]::WriteAllBytes($pfxPath, [Convert]::FromBase64String($env:APPLE_CERT_DATA))
-          $signer = Import-PfxCertificate -FilePath $pfxPath -Password $password -CertStoreLocation "Cert:\LocalMachine\My" |
-            Where-Object { $_.HasPrivateKey } | Select-Object -First 1
-          Export-Certificate -Cert $signer -FilePath $certPath | Out-Null
-
-          @(
-            "Cert:\LocalMachine\TrustedPeople",
-            "Cert:\LocalMachine\TrustedPublisher",
-            "Cert:\LocalMachine\Root"
-          ) | ForEach-Object {
-            Import-Certificate -FilePath $certPath -CertStoreLocation $_ | Out-Null
-          }
+          .\scripts\trust-apple-signer.ps1 `
+            -CertificateData $env:APPLE_CERT_DATA `
+            -CertificatePassword $env:APPLE_CERT_PASSWORD `
+            -ExpectedSubject "*466VYKC9T5*"
 
       - name: Codesign
         id: code-sign-action
