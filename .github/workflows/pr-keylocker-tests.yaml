@@ -24,7 +24,7 @@ jobs:
           cache: npm
       - name: Install dependencies
         shell: bash
-        run: npm clean-install --prefer-offline --frozen-lockfile
+        run: npm ci --prefer-offline
       - name: Package node binary
         shell: bash
         run: npm run build

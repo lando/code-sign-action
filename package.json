@@ -18,7 +18,7 @@
     "Github Actions"
   ],
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=24.0.0"
   },
   "pkg": {
     "outputPath": "dist",
@@ -26,12 +26,11 @@
       "bin/*.js"
     ],
     "assets": [
-      "package.json",
-      "yarn.lock"
+      "package.json"
     ]
   },
   "scripts": {
-    "build": "yarn pkg -c package.json -t node14 bin/test"
+    "build": "pkg -c package.json -t node20 bin/test"
   },
   "devDependencies": {
     "@yao-pkg/pkg": "^6.1.1"

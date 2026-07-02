@@ -19,6 +19,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
       - name: Export formatted release date
         run: echo "RELEASE_DATE=$(date -d "${{ github.event.release.published_at }}" "+%B %e, %Y" | tr -s ' ')" >> $GITHUB_ENV
       - name: Install node
@@ -27,7 +29,7 @@ jobs:
           node-version-file: .node-version
           cache: npm
       - name: Install dependencies
-        run: npm clean-install
+        run: npm ci
       - name: Prepare release
         uses: lando/prepare-release-action@v3
         with:

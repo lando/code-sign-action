@@ -25,7 +25,7 @@ These keys must be set correctly on a `windows` runner.
 ```yaml
 jobs:
   sign:
-    runs-on: windows-2022
+    runs-on: windows-2025
     steps:
       - name: Sign binary
         uses: lando/code-sign-action@v3
@@ -37,7 +37,7 @@ jobs:
 
 ### Codesign
 
-[Codesign](https://ss64.com/mac/codesign.htmll) is the default (and currently only) `signtool` when using `macos` runners.
+[Codesign](https://ss64.com/mac/codesign.html) is the default (and currently only) `signtool` when using `macos` runners.
 
 These keys must be set correctly on a `macos` runner.
 
@@ -51,7 +51,7 @@ These keys must be set correctly on a `macos` runner.
 ```yaml
 jobs:
   sign:
-    runs-on: macos-14
+    runs-on: macos-15
     steps:
       - name: Sign binary
         uses: lando/code-sign-action@v3
@@ -86,20 +86,19 @@ These keys must be set correctly on a `macos` runner.
 ```yaml
 jobs:
   package:
-    runs-on: macos-11
-  steps:
-    name: Sign binary
-    uses: lando/code-sign-action@v2
-    with:
-      file: path/to/binary
-      certificate-data: ${{ secrets.APPLE_CERT_DATA }}
-      certificate-password: ${{ secrets.APPLE_CERT_PASSWORD }}
-      apple-notary-user: ${{ secrets.APPLE_NOTARY_USER }}
-      apple-notary-password: ${{ secrets.APPLE_NOTARY_PASSWORD }}
-      apple-notary-tool: altool
-      apple-team-id: FY8GAUX282
-      apple-product-id: dev.lando.code-sign-action
-      options: --options runtime --entitlements entitlements.xml
+    runs-on: macos-15
+    steps:
+      - name: Sign binary
+        uses: lando/code-sign-action@v3
+        with:
+          file: path/to/binary
+          certificate-data: ${{ secrets.APPLE_CERT_DATA }}
+          certificate-password: ${{ secrets.APPLE_CERT_PASSWORD }}
+          apple-notary-user: ${{ secrets.APPLE_NOTARY_USER }}
+          apple-notary-password: ${{ secrets.APPLE_NOTARY_PASSWORD }}
+          apple-team-id: FY8GAUX282
+          apple-product-id: dev.lando.code-sign-action
+          options: --options runtime --entitlements entitlements.xml
 ```
 
 Note that it's only possible to `codesign` and `notarize` using an Apple Developer certificate.
@@ -125,7 +124,7 @@ These keys must be set correctly on a `windows` runner.
 ```yaml
 jobs:
   sign:
-    runs-on: windows-2022
+    runs-on: windows-2025
     steps:
       - name: Sign binary
         uses: lando/code-sign-action@v3
@@ -176,4 +175,3 @@ Made with [contrib.rocks](https://contrib.rocks).
 * [TERMS OF USE](https://docs.lando.dev/terms)
 * [PRIVACY POLICY](https://docs.lando.dev/privacy)
 * [CODE OF CONDUCT](https://docs.lando.dev/coc)
-

@@ -1,5 +1,5 @@
 name: "Code Sign Action"
-description: "A GitHub Action for code signing files. Particularly those generated with vercel/pkg."
+description: "A GitHub Action for code signing files. Particularly those generated with @yao-pkg/pkg."
 branding:
   color: purple
   icon: lock
@@ -34,7 +34,7 @@ inputs:
     required: false
   certificate-id:
     description: "A string to identify the correct signing cert"
-    required: true
+    required: false
   keylocker-api-key:
     description: "The API key to use for KeyLocker"
     required: false
@@ -249,7 +249,7 @@ runs:
       run: |
         # supported codesigner
         if [ "${{ steps.code-sign-action-internal.outputs.signtool }}" != "codesign" ]; then
-          echo "::error::You must specify osslsigncode, keylocker or smctl as your signtool! You specified ${{ steps.code-sign-action-internal.outputs.signtool }}."
+          echo "::error::You must specify codesign as your signtool on macOS! You specified ${{ steps.code-sign-action-internal.outputs.signtool }}."
           exit 1
         fi
 
@@ -266,7 +266,7 @@ runs:
         if [ "${{ steps.code-sign-action-internal.outputs.signtool }}" != "signtool" ] \
           && [ "${{ steps.code-sign-action-internal.outputs.signtool }}" != "keylocker" ] \
           && [ "${{ steps.code-sign-action-internal.outputs.signtool }}" != "smctl" ]; then
-          echo "::error::You must specify osslsigncode, keylocker or smctl as your signtool! You specified ${{ steps.code-sign-action-internal.outputs.signtool }}."
+          echo "::error::You must specify signtool, keylocker or smctl as your signtool on Windows! You specified ${{ steps.code-sign-action-internal.outputs.signtool }}."
           exit 1
         fi
 
@@ -378,7 +378,7 @@ runs:
 
     - name: Signing with ${{ steps.code-sign-action-internal.outputs.signtool }} (${{ steps.code-sign-action-internal.outputs.os }})
       if: steps.code-sign-action-internal.outputs.signtool == 'keylocker' || steps.code-sign-action-internal.outputs.signtool == 'smctl'
-      uses: cognitedata/code-sign-action/@v3
+      uses: cognitedata/code-sign-action@v3
       with:
         path-to-binary: ${{ steps.code-sign-action-internal.outputs.ghwrfile }}
       env:

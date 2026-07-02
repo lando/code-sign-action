@@ -33,59 +33,23 @@ jobs:
           cache: npm
       - name: Install dependencies
         shell: bash
-        run: npm clean-install --prefer-offline --frozen-lockfile
+        run: npm ci --prefer-offline
       - name: Package node binary
         shell: bash
         run: npm run build
-      # - name: Trust test certs
-      #   if: runner.os == 'macOS'
-      #   shell: bash
-      #   run: |
-      #     # dump
-      #     echo "${{ secrets.APPLE_CERT_DATA }}" | base64 --decode > /tmp/LandoCodeSigningTest.p12
-
-      #     # extract
-      #     openssl pkcs12 -in /tmp/LandoCodeSigningTest.p12 -clcerts -nokeys -out /tmp/LandoCodeSigningTest.pem -password pass:${{ secrets.APPLE_CERT_PASSWORD }}
-
-      #     # trust
-      #     sudo security authorizationdb write com.apple.trust-settings.user allow
-      #     sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain /tmp/LandoCodeSigningTest.pem
-      #     sudo security find-certificate -a -c "Lando System Code Signing Test Certificate" -p /Library/Keychains/System.keychain
-      # - name: Trust test certs
-      #   if: runner.os == 'Windows'
-      #   shell: powershell
-      #   run: |
-      #     # vars
-      #     $temp_dir = "$env:TMP"
-      #     $cert_data = "${{ secrets.APPLE_CERT_DATA }}"
-      #     $cert_path = "$temp_dir\LandoCodeSigningTest.p12"
-      #     $cert_password = "${{ secrets.APPLE_CERT_PASSWORD }}"
-      #     $cert_secure_password = ConvertTo-SecureString -String $cert_password -Force -AsPlainText
-      #     $cert_store  = "Cert:\LocalMachine\Root"
-
-      #     # dump
-      #     If (!(Test-Path $cert_path)) {
-      #       Write-Output "Dumping cert to $cert_path..."
-      #       $bytes = [Convert]::FromBase64String($cert_data)
-      #       [IO.File]::WriteAllBytes($cert_path, $bytes)
-      #     }
-
-      #     # trust
-      #     Import-PfxCertificate -FilePath $cert_path -CertStoreLocation $cert_store -Password $cert_secure_password
-      - name: Trust Apple Developer ID chain on Windows
+      - name: Trust Apple Developer ID test anchor on Windows
         if: runner.os == 'Windows'
         shell: powershell
         run: |
+          # This intentionally trusts the Developer ID G2 issuer directly as an
+          # ephemeral test root. The smoke test only needs Windows signtool to
+          # verify the action's signing flow with the shared Apple cert; it is
+          # not trying to model Apple's full production trust chain.
           $certs = @(
-            @{
-              Url   = "https://www.apple.com/appleca/AppleIncRootCertificate.cer"
-              Path  = "$env:TEMP\AppleIncRootCertificate.cer"
-              Store = "Cert:\LocalMachine\Root"
-            },
             @{
               Url   = "https://www.apple.com/certificateauthority/DeveloperIDG2CA.cer"
               Path  = "$env:TEMP\DeveloperIDG2CA.cer"
-              Store = "Cert:\LocalMachine\CA"
+              Store = "Cert:\LocalMachine\Root"
             }
           )
 
@@ -94,7 +58,7 @@ jobs:
             Import-Certificate -FilePath $cert.Path -CertStoreLocation $cert.Store | Out-Null
           }
 
-          Get-ChildItem Cert:\LocalMachine\Root, Cert:\LocalMachine\CA |
+          Get-ChildItem Cert:\LocalMachine\Root |
             Where-Object { $_.Subject -like "*Apple*" } |
             Select-Object Subject, Thumbprint, NotAfter
 
