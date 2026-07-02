@@ -1,0 +1,49 @@
+name: PR KeyLocker Tests
+
+# PR triggering is disabled because the current KeyLocker account/secrets are no longer valid.
+on:
+  workflow_dispatch:
+  # pull_request:
+
+jobs:
+  keylocker-tests:
+    runs-on: windows-2022
+    env:
+      term: xterm
+    strategy:
+      fail-fast: false
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - name: Install dependencies
+        shell: bash
+        run: npm clean-install --prefer-offline --frozen-lockfile
+      - name: Package node binary
+        shell: bash
+        run: npm run build
+      - name: Codesign
+        id: code-sign-action
+        uses: ./
+        with:
+          file: dist/@lando/code-sign-action.exe
+          certificate-data: ${{ secrets.KEYLOCKER_CLIENT_CERT }}
+          certificate-password: ${{ secrets.KEYLOCKER_CLIENT_CERT_PASSWORD }}
+          keylocker-host: https://clientauth.one.digicert.com
+          keylocker-api-key: ${{ secrets.KEYLOCKER_API_KEY }}
+          keylocker-cert-sha1-hash: ${{ secrets.KEYLOCKER_CERT_SHA1_HASH }}
+          keylocker-keypair-alias: ${{ secrets.KEYLOCKER_KEYPAIR_ALIAS }}
+      - name: Test output
+        shell: bash
+        run: |
+          echo "${{ steps.code-sign-action.outputs.file }}"
+          stat "${{ steps.code-sign-action.outputs.file }}"
+      - name: Execute file
+        shell: bash
+        run: chmod +x "${{ steps.code-sign-action.outputs.file }}" && "${{ steps.code-sign-action.outputs.file }}"

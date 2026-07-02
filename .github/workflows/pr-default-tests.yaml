@@ -1,4 +1,4 @@
-name: PR Tests
+name: PR Default Tests
 
 on:
   pull_request:
@@ -85,96 +85,6 @@ jobs:
           certificate-data: ${{ secrets.DEFAULT_CERT_DATA }}
           certificate-id: LSL337X6
           certificate-password: ${{ secrets.DEFAULT_CERT_PASSWORD }}
-      - name: Test output
-        shell: bash
-        run: |
-          echo "${{ steps.code-sign-action.outputs.file }}"
-          stat "${{ steps.code-sign-action.outputs.file }}"
-      - name: Execute file
-        shell: bash
-        run: chmod +x "${{ steps.code-sign-action.outputs.file }}" && "${{ steps.code-sign-action.outputs.file }}"
-
-  keylocker-tests:
-    if: '!startsWith(github.head_ref, ''dependabot/'')'
-    runs-on: windows-2022
-    env:
-      term: xterm
-    strategy:
-      fail-fast: false
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - name: Install node ${{ matrix.node-version }}
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ matrix.node-version }}
-          cache: npm
-      - name: Install dependencies
-        shell: bash
-        run: npm clean-install --prefer-offline --frozen-lockfile
-      - name: Package node binary
-        shell: bash
-        run: npm run build
-      - name: Codesign
-        id: code-sign-action
-        uses: ./
-        with:
-          file: dist/@lando/code-sign-action.exe
-          certificate-data: ${{ secrets.KEYLOCKER_CLIENT_CERT }}
-          certificate-password: ${{ secrets.KEYLOCKER_CLIENT_CERT_PASSWORD }}
-          keylocker-host: https://clientauth.one.digicert.com
-          keylocker-api-key: ${{ secrets.KEYLOCKER_API_KEY }}
-          keylocker-cert-sha1-hash: ${{ secrets.KEYLOCKER_CERT_SHA1_HASH }}
-          keylocker-keypair-alias: ${{ secrets.KEYLOCKER_KEYPAIR_ALIAS }}
-      - name: Test output
-        shell: bash
-        run: |
-          echo "${{ steps.code-sign-action.outputs.file }}"
-          stat "${{ steps.code-sign-action.outputs.file }}"
-      - name: Execute file
-        shell: bash
-        run: chmod +x "${{ steps.code-sign-action.outputs.file }}" && "${{ steps.code-sign-action.outputs.file }}"
-
-  notarize-tests:
-    if: '!startsWith(github.head_ref, ''dependabot/'')'
-    runs-on: macos-14
-    env:
-      term: xterm
-    strategy:
-      fail-fast: false
-      matrix:
-        node-version:
-          - '20'
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - name: Install node ${{ matrix.node-version }}
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ matrix.node-version }}
-          cache: npm
-      - name: Install dependencies
-        shell: bash
-        run: npm clean-install --prefer-offline --frozen-lockfile
-      - name: Package node binary
-        shell: bash
-        run: npm run build
-      - name: Codesign
-        id: code-sign-action
-        uses: ./
-        with:
-          file: dist/@lando/code-sign-action
-          certificate-data: ${{ secrets.APPLE_CERT_DATA }}
-          certificate-password: ${{ secrets.APPLE_CERT_PASSWORD }}
-          apple-notary-user: ${{ secrets.APPLE_NOTARY_USER }}
-          apple-notary-password: ${{ secrets.APPLE_NOTARY_PASSWORD }}
-          apple-team-id: FY8GAUX282
-          apple-product-id: dev.lando.code-sign-action
-          options: --options runtime --entitlements entitlements.xml
       - name: Test output
         shell: bash
         run: |
