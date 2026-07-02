@@ -41,26 +41,37 @@ jobs:
         if: runner.os == 'Windows'
         shell: powershell
         run: |
+          $ErrorActionPreference = "Stop"
+
           # This intentionally trusts the Developer ID G2 issuer directly as an
-          # ephemeral test root. The smoke test only needs Windows signtool to
-          # verify the action's signing flow with the shared Apple cert; it is
-          # not trying to model Apple's full production trust chain.
-          $certs = @(
-            @{
-              Url   = "https://www.apple.com/certificateauthority/DeveloperIDG2CA.cer"
-              Path  = "$env:TEMP\DeveloperIDG2CA.cer"
-              Store = "Cert:\LocalMachine\Root"
-            }
+          # ephemeral test anchor. The CA store lets Windows discover the issuer
+          # and the Root store lets signtool stop there instead of validating
+          # Apple's full production chain, which is outside this smoke test.
+          # Do not import Apple Root CA here; that makes Windows build the full
+          # Apple chain again and reintroduces the Developer ID G2 critical
+          # extension failure this smoke test is intentionally bypassing.
+          $certUrl = "https://www.apple.com/certificateauthority/DeveloperIDG2CA.cer"
+          $certPath = "$env:TEMP\DeveloperIDG2CA.cer"
+          $stores = @(
+            "Cert:\LocalMachine\CA",
+            "Cert:\LocalMachine\Root"
           )
 
-          foreach ($cert in $certs) {
-            Invoke-WebRequest -Uri $cert.Url -OutFile $cert.Path
-            Import-Certificate -FilePath $cert.Path -CertStoreLocation $cert.Store | Out-Null
+          Invoke-WebRequest -Uri $certUrl -OutFile $certPath
+
+          foreach ($store in $stores) {
+            Import-Certificate -FilePath $certPath -CertStoreLocation $store | Out-Null
           }
 
-          Get-ChildItem Cert:\LocalMachine\Root |
-            Where-Object { $_.Subject -like "*Apple*" } |
-            Select-Object Subject, Thumbprint, NotAfter
+          foreach ($store in $stores) {
+            $trusted = @(Get-ChildItem $store |
+              Where-Object { $_.Thumbprint -eq "5B45F61068B29FCC8FFFF1A7E99B78DA9E9C4635" })
+            if ($trusted.Count -eq 0) {
+              throw "Developer ID G2 certificate was not found in $store after import"
+            }
+            $trusted |
+              Select-Object @{ Name = "Store"; Expression = { $store } }, Subject, Thumbprint, NotAfter
+          }
 
       - name: Codesign
         id: code-sign-action
