@@ -119,7 +119,7 @@ function Import-SignerCertificate {
     [securestring]$Password
   )
 
-  Write-Output "Importing Apple signing certificate from APPLE_CERT_DATA..."
+  Write-Host "Importing Apple signing certificate from APPLE_CERT_DATA..."
   Import-PfxCertificate -FilePath $PfxPath -Password $Password -CertStoreLocation "Cert:\LocalMachine\My" | Out-Null
 
   $signer = Get-ChildItem "Cert:\LocalMachine\My" |
@@ -131,7 +131,7 @@ function Import-SignerCertificate {
     throw "Could not find a private-key certificate matching '$ExpectedSubject' in Cert:\LocalMachine\My."
   }
 
-  Write-Output "Using signer certificate $($signer.Thumbprint): $($signer.Subject)"
+  Write-Host "Using signer certificate $($signer.Thumbprint): $($signer.Subject)"
   Write-Debug "Signer issuer: $($signer.Issuer)"
   Write-Debug "Signer expires: $($signer.NotAfter)"
 
@@ -160,7 +160,7 @@ function Add-SignerToTrustStores {
       throw "Signer certificate $($Signer.Thumbprint) was not found in $store after import."
     }
 
-    Write-Output "Trusted signer certificate in ${store}: $($trusted.Thumbprint)"
+    Write-Host "Trusted signer certificate in ${store}: $($trusted.Thumbprint)"
   }
 }
 
