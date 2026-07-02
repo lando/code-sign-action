@@ -1,0 +1,84 @@
+name: PR Azure Tests
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  azure-artifact-signing-tests:
+    runs-on: windows-2025
+    env:
+      term: xterm
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Install node
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - name: Install dependencies
+        shell: bash
+        run: npm ci --prefer-offline
+      - name: Package node binary
+        shell: bash
+        run: npm run build
+      - name: Azure login
+        uses: azure/login@v3
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      # Once Azure signing is supported by this action, replace the direct
+      # azure/artifact-signing-action call below with this dogfood step.
+      # For Azure, certificate-id should map to certificate-profile-name;
+      # azure/login remains responsible for auth.
+      # - name: Codesign
+      #   id: code-sign-action
+      #   uses: ./
+      #   with:
+      #     file: ${{ github.workspace }}\dist\@lando\code-sign-action.exe
+      #     signtool: azure
+      #     certificate-id: lando
+      #     azure-signing-account-name: lando
+      #     azure-signing-endpoint: https://eus.codesigning.azure.net/
+      - name: Sign with Azure Artifact Signing
+        uses: azure/artifact-signing-action@v2
+        with:
+          endpoint: https://eus.codesigning.azure.net/
+          signing-account-name: lando
+          certificate-profile-name: lando
+          files: ${{ github.workspace }}\dist\@lando\code-sign-action.exe
+          file-digest: SHA256
+          timestamp-rfc3161: http://timestamp.acs.microsoft.com
+          timestamp-digest: SHA256
+      - name: Verify signature
+        shell: powershell
+        run: |
+          $ErrorActionPreference = "Stop"
+
+          $signtool = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin\*\x64\signtool.exe" -ErrorAction SilentlyContinue |
+            Sort-Object { [version]$_.Directory.Parent.Name } -Descending |
+            Select-Object -First 1 -ExpandProperty FullName
+          if ([string]::IsNullOrEmpty($signtool)) {
+            throw "Could not find signtool.exe"
+          }
+
+          & $signtool verify -pa -v "${{ github.workspace }}\dist\@lando\code-sign-action.exe"
+          if ($LASTEXITCODE -ne 0) {
+            throw "signtool verify failed with exit code $LASTEXITCODE"
+          }
+      - name: Test output
+        shell: bash
+        run: |
+          echo "${{ github.workspace }}\dist\@lando\code-sign-action.exe"
+          stat "${{ github.workspace }}\dist\@lando\code-sign-action.exe"
+      - name: Execute file
+        shell: bash
+        run: chmod +x "${{ github.workspace }}\dist\@lando\code-sign-action.exe" && "${{ github.workspace }}\dist\@lando\code-sign-action.exe"
