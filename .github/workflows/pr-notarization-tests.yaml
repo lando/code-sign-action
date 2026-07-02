@@ -5,24 +5,18 @@ on:
 
 jobs:
   notarize-tests:
-    if: '!startsWith(github.head_ref, ''dependabot/'')'
-    runs-on: macos-14
+    runs-on: macos-15
     env:
       term: xterm
-    strategy:
-      fail-fast: false
-      matrix:
-        node-version:
-          - '20'
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - name: Install node ${{ matrix.node-version }}
-        uses: actions/setup-node@v4
+      - name: Install node
+        uses: actions/setup-node@v6
         with:
-          node-version: ${{ matrix.node-version }}
+          node-version-file: .node-version
           cache: npm
       - name: Install dependencies
         shell: bash
@@ -39,7 +33,7 @@ jobs:
           certificate-password: ${{ secrets.APPLE_CERT_PASSWORD }}
           apple-notary-user: ${{ secrets.APPLE_NOTARY_USER }}
           apple-notary-password: ${{ secrets.APPLE_NOTARY_PASSWORD }}
-          apple-team-id: FY8GAUX282
+          apple-team-id: 466VYKC9T5
           apple-product-id: dev.lando.code-sign-action
           options: --options runtime --entitlements entitlements.xml
       - name: Test output

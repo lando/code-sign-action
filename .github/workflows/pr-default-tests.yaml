@@ -5,7 +5,6 @@ on:
 
 jobs:
   default-signtool-tests:
-    if: '!startsWith(github.head_ref, ''dependabot/'')'
     runs-on: ${{ matrix.os }}
     env:
       term: xterm
@@ -13,28 +12,24 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: macos-14
+          - os: macos-15
             file: dist/@lando/code-sign-action
-            node-version: '20'
-          - os: macos-14
+          - os: macos-15
             file: /Users/runner/work/code-sign-action/code-sign-action/dist/@lando/code-sign-action
-            node-version: '20'
-          - os: windows-2022
+          - os: windows-2025
             file: dist\@lando\code-sign-action.exe
-            node-version: '20'
-          - os: windows-2022
+          - os: windows-2025
             file: D:\a\code-sign-action\code-sign-action/dist\@lando\code-sign-action.exe
-            node-version: '20'
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - name: Install node ${{ matrix.node-version }}
-        uses: actions/setup-node@v4
+      - name: Install node
+        uses: actions/setup-node@v6
         with:
-          node-version: ${{ matrix.node-version }}
+          node-version-file: .node-version
           cache: npm
       - name: Install dependencies
         shell: bash
@@ -47,10 +42,10 @@ jobs:
         shell: bash
         run: |
           # dump
-          echo "${{ secrets.DEFAULT_CERT_DATA }}" | base64 --decode > /tmp/LandoCodeSigningTest.p12
+          echo "${{ secrets.APPLE_CERT_DATA }}" | base64 --decode > /tmp/LandoCodeSigningTest.p12
 
           # extract
-          openssl pkcs12 -in /tmp/LandoCodeSigningTest.p12 -clcerts -nokeys -out /tmp/LandoCodeSigningTest.pem -password pass:${{ secrets.DEFAULT_CERT_PASSWORD }}
+          openssl pkcs12 -in /tmp/LandoCodeSigningTest.p12 -clcerts -nokeys -out /tmp/LandoCodeSigningTest.pem -password pass:${{ secrets.APPLE_CERT_PASSWORD }}
 
           # trust
           sudo security authorizationdb write com.apple.trust-settings.user allow
@@ -62,9 +57,9 @@ jobs:
         run: |
           # vars
           $temp_dir = "$env:TMP"
-          $cert_data = "${{ secrets.DEFAULT_CERT_DATA }}"
+          $cert_data = "${{ secrets.APPLE_CERT_DATA }}"
           $cert_path = "$temp_dir\LandoCodeSigningTest.p12"
-          $cert_password = "${{ secrets.DEFAULT_CERT_PASSWORD }}"
+          $cert_password = "${{ secrets.APPLE_CERT_PASSWORD }}"
           $cert_secure_password = ConvertTo-SecureString -String $cert_password -Force -AsPlainText
           $cert_store  = "Cert:\LocalMachine\Root"
 
@@ -82,9 +77,9 @@ jobs:
         uses: ./
         with:
           file: ${{ matrix.file }}
-          certificate-data: ${{ secrets.DEFAULT_CERT_DATA }}
-          certificate-id: LSL337X6
-          certificate-password: ${{ secrets.DEFAULT_CERT_PASSWORD }}
+          certificate-data: ${{ secrets.APPLE_CERT_DATA }}
+          certificate-id: 466VYKC9T5
+          certificate-password: ${{ secrets.APPLE_CERT_PASSWORD }}
       - name: Test output
         shell: bash
         run: |

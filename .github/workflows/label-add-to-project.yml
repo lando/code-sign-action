@@ -9,7 +9,6 @@ on:
 
 jobs:
   add_to_project:
-    if: github.event_name != 'pull_request' || !startsWith(github.head_ref, 'dependabot/')
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -22,7 +21,7 @@ jobs:
     steps:
       - name: Add issue/PR to GitHub Project
         if: github.event.label.name == '${{ matrix.flag }}'
-        uses: actions/add-to-project@v1.0.0
+        uses: actions/add-to-project@v2
         with:
           project-url: https://github.com/orgs/lando/projects/10
           github-token: ${{ secrets.SHADOW_COUNCIL_ESCALATOR }}

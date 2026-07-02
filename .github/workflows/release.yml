@@ -15,18 +15,16 @@ jobs:
       matrix:
         os:
           - ubuntu-24.04
-        node-version:
-          - '20'
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
       - name: Export formatted release date
         run: echo "RELEASE_DATE=$(date -d "${{ github.event.release.published_at }}" "+%B %e, %Y" | tr -s ' ')" >> $GITHUB_ENV
-      - name: Install node ${{ matrix.node-version }}
-        uses: actions/setup-node@v4
+      - name: Install node
+        uses: actions/setup-node@v6
         with:
-          node-version: ${{ matrix.node-version }}
+          node-version-file: .node-version
           cache: npm
       - name: Install dependencies
         run: npm clean-install
