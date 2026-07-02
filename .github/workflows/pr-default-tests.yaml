@@ -52,41 +52,18 @@ jobs:
           # that Windows cannot validate because of Apple's critical extension.
           $pfxPath = "$env:TEMP\apple-signer.p12"
           $certPath = "$env:TEMP\apple-signer.cer"
-          $certPassword = ConvertTo-SecureString $env:APPLE_CERT_PASSWORD -AsPlainText -Force
+          $password = ConvertTo-SecureString $env:APPLE_CERT_PASSWORD -AsPlainText -Force
           [IO.File]::WriteAllBytes($pfxPath, [Convert]::FromBase64String($env:APPLE_CERT_DATA))
-
-          $importedCerts = @(Import-PfxCertificate -FilePath $pfxPath -Password $certPassword -CertStoreLocation "Cert:\LocalMachine\My")
-          $signer = $importedCerts |
-            Where-Object { $_.HasPrivateKey -and $_.Subject -like "*466VYKC9T5*" } |
-            Select-Object -First 1
-          if ($null -eq $signer) {
-            throw "Could not find the expected Apple signer certificate in the imported PFX"
-          }
-
+          $signer = Import-PfxCertificate -FilePath $pfxPath -Password $password -CertStoreLocation "Cert:\LocalMachine\My" |
+            Where-Object { $_.HasPrivateKey } | Select-Object -First 1
           Export-Certificate -Cert $signer -FilePath $certPath | Out-Null
-          Write-Output "Trusting Apple signer certificate directly:"
-          $signer | Select-Object Subject, Issuer, Thumbprint, NotAfter
-          $signer.Extensions |
-            Select-Object @{ Name = "Oid"; Expression = { $_.Oid.Value } }, @{ Name = "Name"; Expression = { $_.Oid.FriendlyName } }, Critical
 
-          $stores = @(
+          @(
             "Cert:\LocalMachine\TrustedPeople",
             "Cert:\LocalMachine\TrustedPublisher",
             "Cert:\LocalMachine\Root"
-          )
-
-          foreach ($store in $stores) {
-            Import-Certificate -FilePath $certPath -CertStoreLocation $store | Out-Null
-          }
-
-          foreach ($store in $stores) {
-            $trusted = @(Get-ChildItem $store |
-              Where-Object { $_.Thumbprint -eq $signer.Thumbprint })
-            if ($trusted.Count -eq 0) {
-              throw "Apple signer certificate was not found in $store after import"
-            }
-            $trusted |
-              Select-Object @{ Name = "Store"; Expression = { $store } }, Subject, Thumbprint, NotAfter
+          ) | ForEach-Object {
+            Import-Certificate -FilePath $certPath -CertStoreLocation $_ | Out-Null
           }
 
       - name: Codesign
