@@ -37,41 +37,72 @@ jobs:
       - name: Package node binary
         shell: bash
         run: npm run build
-      - name: Trust test certs
-        if: runner.os == 'macOS'
-        shell: bash
-        run: |
-          # dump
-          echo "${{ secrets.APPLE_CERT_DATA }}" | base64 --decode > /tmp/LandoCodeSigningTest.p12
+      # - name: Trust test certs
+      #   if: runner.os == 'macOS'
+      #   shell: bash
+      #   run: |
+      #     # dump
+      #     echo "${{ secrets.APPLE_CERT_DATA }}" | base64 --decode > /tmp/LandoCodeSigningTest.p12
 
-          # extract
-          openssl pkcs12 -in /tmp/LandoCodeSigningTest.p12 -clcerts -nokeys -out /tmp/LandoCodeSigningTest.pem -password pass:${{ secrets.APPLE_CERT_PASSWORD }}
+      #     # extract
+      #     openssl pkcs12 -in /tmp/LandoCodeSigningTest.p12 -clcerts -nokeys -out /tmp/LandoCodeSigningTest.pem -password pass:${{ secrets.APPLE_CERT_PASSWORD }}
 
-          # trust
-          sudo security authorizationdb write com.apple.trust-settings.user allow
-          sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain /tmp/LandoCodeSigningTest.pem
-          sudo security find-certificate -a -c "Lando System Code Signing Test Certificate" -p /Library/Keychains/System.keychain
-      - name: Trust test certs
+      #     # trust
+      #     sudo security authorizationdb write com.apple.trust-settings.user allow
+      #     sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain /tmp/LandoCodeSigningTest.pem
+      #     sudo security find-certificate -a -c "Lando System Code Signing Test Certificate" -p /Library/Keychains/System.keychain
+      # - name: Trust test certs
+      #   if: runner.os == 'Windows'
+      #   shell: powershell
+      #   run: |
+      #     # vars
+      #     $temp_dir = "$env:TMP"
+      #     $cert_data = "${{ secrets.APPLE_CERT_DATA }}"
+      #     $cert_path = "$temp_dir\LandoCodeSigningTest.p12"
+      #     $cert_password = "${{ secrets.APPLE_CERT_PASSWORD }}"
+      #     $cert_secure_password = ConvertTo-SecureString -String $cert_password -Force -AsPlainText
+      #     $cert_store  = "Cert:\LocalMachine\Root"
+
+      #     # dump
+      #     If (!(Test-Path $cert_path)) {
+      #       Write-Output "Dumping cert to $cert_path..."
+      #       $bytes = [Convert]::FromBase64String($cert_data)
+      #       [IO.File]::WriteAllBytes($cert_path, $bytes)
+      #     }
+
+      #     # trust
+      #     Import-PfxCertificate -FilePath $cert_path -CertStoreLocation $cert_store -Password $cert_secure_password
+      - name: Trust Apple Root on Windows
         if: runner.os == 'Windows'
         shell: powershell
         run: |
-          # vars
-          $temp_dir = "$env:TMP"
-          $cert_data = "${{ secrets.APPLE_CERT_DATA }}"
-          $cert_path = "$temp_dir\LandoCodeSigningTest.p12"
-          $cert_password = "${{ secrets.APPLE_CERT_PASSWORD }}"
-          $cert_secure_password = ConvertTo-SecureString -String $cert_password -Force -AsPlainText
-          $cert_store  = "Cert:\LocalMachine\Root"
+          $certs = @(
+            @{
+              Url   = "https://www.apple.com/appleca/AppleIncRootCertificate.cer"
+              Path  = "$env:TEMP\AppleIncRootCertificate.cer"
+              Store = "Cert:\LocalMachine\Root"
+            },
+            @{
+              Url   = "https://www.apple.com/certificateauthority/AppleRootCA-G3.cer"
+              Path  = "$env:TEMP\AppleRootCA-G3.cer"
+              Store = "Cert:\LocalMachine\Root"
+            },
+            @{
+              Url   = "https://www.apple.com/certificateauthority/DeveloperIDG2CA.cer"
+              Path  = "$env:TEMP\DeveloperIDG2CA.cer"
+              Store = "Cert:\LocalMachine\CA"
+            }
+          )
 
-          # dump
-          If (!(Test-Path $cert_path)) {
-            Write-Output "Dumping cert to $cert_path..."
-            $bytes = [Convert]::FromBase64String($cert_data)
-            [IO.File]::WriteAllBytes($cert_path, $bytes)
+          foreach ($cert in $certs) {
+            Invoke-WebRequest -Uri $cert.Url -OutFile $cert.Path
+            Import-Certificate -FilePath $cert.Path -CertStoreLocation $cert.Store | Out-Null
           }
 
-          # trust
-          Import-PfxCertificate -FilePath $cert_path -CertStoreLocation $cert_store -Password $cert_secure_password
+          Get-ChildItem Cert:\LocalMachine\Root, Cert:\LocalMachine\CA |
+            Where-Object { $_.Subject -like "*Apple*" } |
+            Select-Object Subject, Thumbprint, NotAfter
+
       - name: Codesign
         id: code-sign-action
         uses: ./
