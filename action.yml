@@ -4,16 +4,16 @@ branding:
   color: purple
   icon: lock
 inputs:
-  # Required
+  # Common
   file:
     description: "The file to sign"
     required: true
   certificate-data:
-    description: "A `base64` encoded string of your `p12` or `pfx` cert contents. Note: if you use KeyLocker, this will be the base64 encoded client certificate (`SM_CLIENT_CERT_FILE`)"
-    required: true
+    description: "A `base64` encoded string of your `p12` or `pfx` cert contents. Note: if you use KeyLocker, this will be the base64 encoded client certificate (`SM_CLIENT_CERT_FILE`). Not required for Azure Artifact Signing."
+    required: false
   certificate-password:
-    description: "The password to unlock the certificate-data"
-    required: true
+    description: "The password to unlock the certificate-data. Not required for Azure Artifact Signing."
+    required: false
 
   # Optional
   apple-notary-password:
@@ -34,6 +34,21 @@ inputs:
     required: false
   certificate-id:
     description: "A string to identify the correct signing cert"
+    required: false
+  azure-client-id:
+    description: "The Azure application client ID to use for Azure Artifact Signing"
+    required: false
+  azure-signing-account-name:
+    description: "The Azure Artifact Signing account name"
+    required: false
+  azure-signing-endpoint:
+    description: "The Azure Artifact Signing endpoint"
+    required: false
+  azure-subscription-id:
+    description: "The Azure subscription ID to use for Azure Artifact Signing"
+    required: false
+  azure-tenant-id:
+    description: "The Azure tenant ID to use for Azure Artifact Signing"
     required: false
   keylocker-api-key:
     description: "The API key to use for KeyLocker"
@@ -73,20 +88,6 @@ runs:
         fi
         echo "::endgroup::"
 
-        echo "::group::Ensure cert data is set"
-        if [ "${{ inputs.certificate-data }}" == "" ]; then
-          echo "::error title=Cert data is not set!::You must specify the cert you want to sign with!"
-          exit 2
-        fi
-        echo "::endgroup::"
-
-        echo "::group::Ensure certificate password is set"
-        if [ "${{ inputs.certificate-password }}" == "" ]; then
-          echo "::error title=Cert password is not set!::You must specify the password to unlock the cert with!"
-          exit 2
-        fi
-        echo "::endgroup::"
-
     - name: Set generic internal inputs
       id: code-sign-action-generic-internal
       shell: bash
@@ -108,9 +109,24 @@ runs:
         fi
 
         # signtool discovery if needed
-        if [ "${{ inputs.signtool }}" == "auto" ]; then
+        if [ "${{ inputs.signtool }}" != "auto" ]; then
+          echo "signtool=${{ inputs.signtool }}" >> $GITHUB_OUTPUT
+        else
+          azure_inputs_set=false
+          if [[ -n "${{ inputs.azure-client-id }}" ]] \
+            || [[ -n "${{ inputs.azure-signing-account-name }}" ]] \
+            || [[ -n "${{ inputs.azure-signing-endpoint }}" ]] \
+            || [[ -n "${{ inputs.azure-subscription-id }}" ]] \
+            || [[ -n "${{ inputs.azure-tenant-id }}" ]]; then
+            azure_inputs_set=true
+          fi
+
+          # azure
+          if [ "${{ runner.os }}" == "Windows" ] && [ "$azure_inputs_set" == "true" ]; then
+            echo "signtool=azure" >> $GITHUB_OUTPUT
+
           # keylocker
-          if [ "${{ runner.os }}" != "macOS" ] \
+          elif [ "${{ runner.os }}" != "macOS" ] \
             && [[ -n "${{ inputs.keylocker-api-key }}" ]] \
             && [[ -n "${{ inputs.keylocker-cert-sha1-hash }}" ]] \
             && [[ -n "${{ inputs.keylocker-host }}" ]] \
@@ -237,6 +253,24 @@ runs:
         echo "signtool=${{ steps.code-sign-action-internal.outputs.signtool }}"
         echo "::endgroup::"
 
+    - name: Validate certificate inputs
+      if: steps.code-sign-action-internal.outputs.os != 'linux' && steps.code-sign-action-internal.outputs.signtool != 'azure'
+      shell: bash
+      run: |
+        echo "::group::Ensure cert data is set"
+        if [ "${{ inputs.certificate-data }}" == "" ]; then
+          echo "::error title=Cert data is not set!::You must specify the cert you want to sign with!"
+          exit 2
+        fi
+        echo "::endgroup::"
+
+        echo "::group::Ensure certificate password is set"
+        if [ "${{ inputs.certificate-password }}" == "" ]; then
+          echo "::error title=Cert password is not set!::You must specify the password to unlock the cert with!"
+          exit 2
+        fi
+        echo "::endgroup::"
+
     - name: Validate linux specific inputs
       if: steps.code-sign-action-internal.outputs.os == 'linux'
       shell: bash
@@ -265,9 +299,48 @@ runs:
         # supported codesigner
         if [ "${{ steps.code-sign-action-internal.outputs.signtool }}" != "signtool" ] \
           && [ "${{ steps.code-sign-action-internal.outputs.signtool }}" != "keylocker" ] \
-          && [ "${{ steps.code-sign-action-internal.outputs.signtool }}" != "smctl" ]; then
-          echo "::error::You must specify signtool, keylocker or smctl as your signtool on Windows! You specified ${{ steps.code-sign-action-internal.outputs.signtool }}."
+          && [ "${{ steps.code-sign-action-internal.outputs.signtool }}" != "smctl" ] \
+          && [ "${{ steps.code-sign-action-internal.outputs.signtool }}" != "azure" ]; then
+          echo "::error::You must specify signtool, keylocker, smctl or azure as your signtool on Windows! You specified ${{ steps.code-sign-action-internal.outputs.signtool }}."
           exit 1
+        fi
+    - name: Validate azure specific inputs
+      if: steps.code-sign-action-internal.outputs.signtool == 'azure'
+      shell: bash
+      run: |
+        if [ "${{ steps.code-sign-action-internal.outputs.os }}" != "win" ]; then
+          echo "::error::Azure Artifact Signing is only supported on Windows runners."
+          exit 1
+        fi
+
+        if [ "${{ inputs.azure-client-id }}" == "" ]; then
+          echo "::error title=Azure client ID is not set!::You must specify azure-client-id to sign with Azure Artifact Signing."
+          exit 2
+        fi
+
+        if [ "${{ inputs.azure-signing-account-name }}" == "" ]; then
+          echo "::error title=Azure signing account name is not set!::You must specify azure-signing-account-name to sign with Azure Artifact Signing."
+          exit 2
+        fi
+
+        if [ "${{ inputs.azure-signing-endpoint }}" == "" ]; then
+          echo "::error title=Azure signing endpoint is not set!::You must specify azure-signing-endpoint to sign with Azure Artifact Signing."
+          exit 2
+        fi
+
+        if [ "${{ inputs.azure-subscription-id }}" == "" ]; then
+          echo "::error title=Azure subscription ID is not set!::You must specify azure-subscription-id to sign with Azure Artifact Signing."
+          exit 2
+        fi
+
+        if [ "${{ inputs.azure-tenant-id }}" == "" ]; then
+          echo "::error title=Azure tenant ID is not set!::You must specify azure-tenant-id to sign with Azure Artifact Signing."
+          exit 2
+        fi
+
+        if [ "${{ steps.code-sign-action-internal.outputs.signid }}" == "" ]; then
+          echo "::error title=Azure certificate profile name is not set!::You must specify certificate-id to sign with Azure Artifact Signing."
+          exit 2
         fi
 
     - name: Dump certs
@@ -279,7 +352,7 @@ runs:
         echo "${{ inputs.certificate-data }}" | base64 --decode > "${{ steps.code-sign-action-internal.outputs.signcert }}"
         echo "::endgroup::"
     - name: Dump certs
-      if: steps.code-sign-action-internal.outputs.os == 'win'
+      if: steps.code-sign-action-internal.outputs.os == 'win' && steps.code-sign-action-internal.outputs.signtool != 'azure'
       shell: powershell
       run: |
         echo "::group::Dumping inputs.certificate-data"
@@ -375,6 +448,42 @@ runs:
         & $signtool sign -sha1 $cert.Thumbprint -sm -fd sha256 -tr "http://timestamp.comodoca.com/?td=sha256" -td sha256 ${{ inputs.options }} -as -v "${{ steps.code-sign-action-internal.outputs.file }}"
         Write-Output "Verifying $file has been signed with the signtool..."
         & $signtool verify -pa -v "${{ steps.code-sign-action-internal.outputs.file }}"
+
+    - name: Azure login
+      if: steps.code-sign-action-internal.outputs.signtool == 'azure'
+      uses: azure/login@v3
+      with:
+        client-id: ${{ inputs.azure-client-id }}
+        tenant-id: ${{ inputs.azure-tenant-id }}
+        subscription-id: ${{ inputs.azure-subscription-id }}
+    - name: Signing with ${{ steps.code-sign-action-internal.outputs.signtool }} (${{ steps.code-sign-action-internal.outputs.os }})
+      if: steps.code-sign-action-internal.outputs.signtool == 'azure'
+      uses: azure/artifact-signing-action@v2
+      with:
+        endpoint: ${{ inputs.azure-signing-endpoint }}
+        signing-account-name: ${{ inputs.azure-signing-account-name }}
+        certificate-profile-name: ${{ steps.code-sign-action-internal.outputs.signid }}
+        files: ${{ steps.code-sign-action-internal.outputs.file }}
+        file-digest: SHA256
+        timestamp-rfc3161: http://timestamp.acs.microsoft.com
+        timestamp-digest: SHA256
+    - name: Verifying Azure signature
+      if: steps.code-sign-action-internal.outputs.signtool == 'azure'
+      shell: powershell
+      run: |
+        $ErrorActionPreference = "Stop"
+
+        $signtool = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin\*\x64\signtool.exe" -ErrorAction SilentlyContinue |
+          Sort-Object { [version]$_.Directory.Parent.Name } -Descending |
+          Select-Object -First 1 -ExpandProperty FullName
+        if ([string]::IsNullOrEmpty($signtool)) {
+          throw "Could not find signtool.exe"
+        }
+
+        & $signtool verify -pa -v "${{ steps.code-sign-action-internal.outputs.file }}"
+        if ($LASTEXITCODE -ne 0) {
+          throw "signtool verify failed with exit code $LASTEXITCODE"
+        }
 
     - name: Signing with ${{ steps.code-sign-action-internal.outputs.signtool }} (${{ steps.code-sign-action-internal.outputs.os }})
       if: steps.code-sign-action-internal.outputs.signtool == 'keylocker' || steps.code-sign-action-internal.outputs.signtool == 'smctl'
